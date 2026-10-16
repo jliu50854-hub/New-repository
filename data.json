@@ -1,0 +1,16 @@
+{
+  "update_time": "等待首次自动更新",
+  "stocks": [
+    {
+      "code": "600000",
+      "name": "测试示例股",
+      "price": "10.50",
+      "change": "+4.52%",
+      "change_num": 4.52,
+      "turnover": "6.50%",
+      "volume_ratio": "2.3",
+      "tag": "量价突破",
+      "reason": "温和放量上涨，量比>2，换手率活跃"
+    }
+  ]
+}
