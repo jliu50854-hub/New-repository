@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日A股潜力股追踪</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .up { color: #e53e3e; font-weight: bold; }
+        .down { color: #38a169; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+
+    <header class="bg-blue-900 text-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">📈 A股每日潜力雷达</h1>
+            <span id="update-time" class="text-sm bg-blue-800 px-3 py-1 rounded">正在加载数据...</span>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6">
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-2">
+                <button onclick="filterStocks('all')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">全部潜力股</button>
+                <button onclick="filterStocks('量价突破')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">量价突破</button>
+                <button onclick="filterStocks('活跃异动')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">活跃异动</button>
+            </div>
+            <div>
+                <input type="text" id="search-input" onkeyup="searchStock()" placeholder="搜索股票代码或名称..." class="border rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 border-b text-gray-600 text-sm">
+                        <th class="p-4">股票代码</th>
+                        <th class="p-4">股票名称</th>
+                        <th class="p-4">最新价</th>
+                        <th class="p-4">涨跌幅</th>
+                        <th class="p-4">换手率</th>
+                        <th class="p-4">量比</th>
+                        <th class="p-4">入选逻辑 / 潜力标签</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-table-body" class="divide-y divide-gray-200 text-sm">
+                    <tr><td colspan="7" class="p-4 text-center text-gray-500">数据加载中，请稍候...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer class="text-center text-gray-500 text-xs py-6">
+        <p>免责声明：本网页由自动化脚本每日收盘后根据公开量价指标筛选，不构成任何投资建议。</p>
+    </footer>
+
+    <script>
+        let stockData = [];
+
+        // 从同目录下的 data.json 加载每日更新的数据
+        async function loadData() {
+            try {
+                // 加上时间戳防止浏览器缓存旧数据
+                const response = await fetch('./data.json?t=' + new Date().getTime());
+                const result = await response.json();
+                document.getElementById('update-time').innerText = '最后更新: ' + result.update_time;
+                stockData = result.stocks;
+                renderTable(stockData);
+            } catch (error) {
+                document.getElementById('stock-table-body').innerHTML = 
+                    '<tr><td colspan="7" class="p-4 text-center text-red-500">暂未获取到数据，请先在 GitHub Actions 中运行一次数据抓取脚本。</td></tr>';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('stock-table-body');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-500">今日无符合条件的股票</td></tr>';
+                return;
+            }
+            data.forEach(stock => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 transition';
+                const isUp = stock.change_num >= 0;
+                tr.innerHTML = `
+                    <td class="p-4 font-mono">${stock.code}</td>
+                    <td class="p-4 font-medium">${stock.name}</td>
+                    <td class="p-4 ${isUp ? 'up' : 'down'}">${stock.price}</td>
+                    <td class="p-4 ${isUp ? 'up' : 'down'}">${stock.change}</td>
+                    <td class="p-4">${stock.turnover}</td>
+                    <td class="p-4">${stock.volume_ratio}</td>
+                    <td class="p-4">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold mr-2">${stock.tag}</span>
+                        <span class="text-gray-600">${stock.reason}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterStocks(tag) {
+            if (tag === 'all') {
+                renderTable(stockData);
+            } else {
+                renderTable(stockData.filter(s => s.tag === tag));
+            }
+        }
+
+        function searchStock() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            renderTable(stockData.filter(s => s.code.toLowerCase().includes(query) || s.name.toLowerCase().includes(query)));
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
