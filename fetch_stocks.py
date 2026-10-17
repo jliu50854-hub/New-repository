@@ -41,10 +41,7 @@ def get_market_overview():
     return indices
 
 def get_all_stock_symbols():
-    """
-    第一步：从新浪财经稳健获取全市场 5300+ 只A股的代码列表
-    单线程顺序拉取，每页100只，新浪接口对GitHub海外IP完全放行
-    """
+    """从新浪财经稳健获取全市场 5300+ 只A股的代码列表"""
     url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData"
     symbols = []
     seen = set()
@@ -82,9 +79,7 @@ def get_all_stock_symbols():
     return symbols
 
 def fetch_all_quotes_from_tencent(symbols):
-    """
-    第二步：通过腾讯财经CDN接口批量拉取全部股票的完整行情（每次80只，仅需60余次请求，绝不封IP）
-    """
+    """通过腾讯财经CDN接口批量拉取全部股票的完整行情"""
     stocks_raw = []
     batch_size = 80
     for i in range(0, len(symbols), batch_size):
@@ -103,6 +98,38 @@ def fetch_all_quotes_from_tencent(symbols):
             print(f"腾讯批次 {i} 拉取跳过: {e}")
         time.sleep(0.05)
     return stocks_raw
+
+def analyze_single_kline(open_p, close_p, high_p, low_p, pre_close, chg, to):
+    """根据当日开盘、收盘、最高、最低价自动识别经典K线形态并给出解读"""
+    if high_p <= low_p or open_p <= 0:
+        return "普通K线", "窄幅波动"
+
+    total_len = high_p - low_p
+    body = abs(close_p - open_p)
+    upper_shadow = high_p - max(open_p, close_p)
+    lower_shadow = min(open_p, close_p) - low_p
+    amplitude = (total_len / pre_close * 100) if pre_close > 0 else 0
+
+    if close_p > open_p and chg >= 4.0 and upper_shadow <= total_len * 0.08 and lower_shadow <= total_len * 0.08:
+        return "光头大阳", "全天买盘逼空上行，多头力量极强，关注次日溢价"
+    if amplitude >= 3.0 and lower_shadow >= total_len * 0.55 and upper_shadow <= total_len * 0.15:
+        if close_p >= open_p:
+            return "金针探底", "日内深V反转，下方承接力极强，主力洗盘特征明显"
+        else:
+            return "长下影线", "盘中恐慌盘涌出后获资金抄底承接，关注下影线低点支撑"
+    if amplitude >= 3.5 and upper_shadow >= total_len * 0.55 and lower_shadow <= total_len * 0.15:
+        if chg > 0 and to < 12.0:
+            return "仙人指路", "冲高回落留长上影，温和换手疑似主力试盘测试上方抛压"
+        else:
+            return "长上影线", "上方抛压较重，冲高受阻回落，短线需突破上影最高价才可转强"
+    if amplitude >= 2.5 and body <= total_len * 0.12:
+        return "变盘十字星", "多空分歧加剧但势均力敌，面临短线方向选择"
+    if open_p > pre_close * 1.02 and close_p < open_p * 0.97:
+        return "高开低走", "高开后遭遇获利盘集中兑现，日内套牢盘较重，谨防调整"
+    if 1.0 <= chg < 4.0 and close_p > open_p and upper_shadow < body:
+        return "稳健推升阳线", "重心温和上移，多头占优且抛压可控"
+
+    return "常规形态", "量价平稳运行"
 
 def evaluate_yesterday_performance(today_price_map):
     """计算上一期潜力股在今日的真实胜率与溢价"""
@@ -141,7 +168,7 @@ def generate_ai_market_summary(up_count, down_count, limit_up, top_inflow_stocks
         advice = "建议轻指数重个股，聚焦放量且高换手的活跃个股，切忌盲目追高。"
     else:
         mood = f"情绪偏弱降温（市场温度 {temp}°C），亏钱效应有所扩大"
-        advice = "建议控制仓位、防守为主，优先关注底部温和放量且估值合理的低位股。"
+        advice = "建议控制仓位、防守为主，优先关注底部金针探底或温和蓄势的低位股。"
 
     active_names = "、".join([f"{s['name']}({s['change']})" for s in top_inflow_stocks[:4]])
     return (
@@ -150,7 +177,7 @@ def generate_ai_market_summary(up_count, down_count, limit_up, top_inflow_stocks
     )
 
 def main():
-    print("开始全量抓取 A 股 5000+ 公司数据（新浪+腾讯双擎防封版）...")
+    print("开始全量抓取 A 股 5000+ 公司数据与K线形态识别...")
     symbols = get_all_stock_symbols()
     raw_quotes = fetch_all_quotes_from_tencent(symbols)
     print(f"腾讯接口成功返回 {len(raw_quotes)} 只股票的完整行情！")
@@ -167,39 +194,35 @@ def main():
             code = parts[2].strip()
             price = float(parts[3]) if parts[3] else 0.0
             pre_close = float(parts[4]) if parts[4] else 0.0
+            open_p = float(parts[5]) if parts[5] else price
+            high_p = float(parts[33]) if parts[33] else price
+            low_p = float(parts[34]) if parts[34] else price
             if price <= 0 or pre_close <= 0:
                 continue
 
             chg = float(parts[32]) if parts[32] else 0.0
             to = float(parts[38]) if parts[38] else 0.0
             pe = float(parts[39]) if parts[39] else 0.0
-            mv = float(parts[45]) if parts[45] else 0.0  # 总市值(亿元)
-            vr = float(parts[49]) if parts[49] else 1.0  # 量比
+            mv = float(parts[45]) if parts[45] else 0.0
+            vr = float(parts[49]) if parts[49] else 1.0
             amount_wan = float(parts[37]) if parts[37] else 0.0
-            amount_yi = amount_wan / 10000.0  # 成交额(亿元)
+            amount_yi = amount_wan / 10000.0
         except (ValueError, IndexError):
             continue
 
         today_price_map[code] = chg
 
-        # 按板块分类
         if code.startswith("688"):
-            sector = "科创板"
-            symbol = f"sh{code}"
+            sector, symbol = "科创板", f"sh{code}"
         elif code.startswith("6"):
-            sector = "沪市主板"
-            symbol = f"sh{code}"
+            sector, symbol = "沪市主板", f"sh{code}"
         elif code.startswith("30"):
-            sector = "创业板"
-            symbol = f"sz{code}"
+            sector, symbol = "创业板", f"sz{code}"
         elif code.startswith(("00", "0")):
-            sector = "深市主板"
-            symbol = f"sz{code}"
+            sector, symbol = "深市主板", f"sz{code}"
         else:
-            sector = "北交所"
-            symbol = f"bj{code}"
+            sector, symbol = "北交所", f"bj{code}"
 
-        # 统计涨跌与涨停
         is_limit_up = (chg >= 9.8 and not code.startswith(("30", "68", "8", "4", "92"))) or (chg >= 19.8)
         if chg > 0:
             up_count += 1
@@ -214,29 +237,25 @@ def main():
 
         is_st = "ST" in name or "退" in name
 
-        # 策略打标与简评
+        kline_pattern, kline_desc = analyze_single_kline(open_p, price, high_p, low_p, pre_close, chg, to)
+
         tag = "全市场"
-        comments = []
+        comments = [f"【{kline_pattern}】{kline_desc}"]
         if is_limit_up and not is_st:
             tag = "涨停板"
-            comments.append(f"今日强势涨停，换手{to:.1f}%，成交{amount_yi:.2f}亿")
+            comments.insert(0, f"强势封涨停(换手{to:.1f}%)")
         elif not is_st and price >= 4.0:
             if 3.0 <= chg <= 8.8 and 4.0 <= to <= 20.0 and vr >= 1.5:
                 tag = "量价突破"
-                comments.append(f"放量上攻(量比{vr:.1f}，换手{to:.1f}%)，成交{amount_yi:.2f}亿")
+                comments.insert(0, f"放量上攻(量比{vr:.1f})")
             elif 1.0 <= chg <= 4.5 and 2.5 <= to <= 10.0 and 1.2 <= vr <= 2.8:
                 tag = "温和蓄势"
-                comments.append(f"温和放量蓄势(量比{vr:.1f})，换手{to:.1f}%")
+                comments.insert(0, f"温和放量蓄势(量比{vr:.1f})")
             elif to >= 12.0 and vr >= 1.4 and chg > 0:
                 tag = "高换手博弈"
-                comments.append(f"短线资金剧烈博弈(换手{to:.1f}%)")
+                comments.insert(0, f"短线剧烈博弈(换手{to:.1f}%)")
 
-        if 0 < pe <= 25:
-            comments.append(f"低估值(PE:{pe:.1f})")
-        elif pe > 100:
-            comments.append("高估值注意波动")
-
-        reason = "；".join(comments) if comments else f"{sector}标的，成交额{amount_yi:.2f}亿"
+        reason = "；".join(comments)
         mv_str = f"{mv:.1f}亿" if mv > 0 else "--"
         pe_str = f"{pe:.1f}" if pe > 0 else ("亏损" if pe < 0 else "--")
         amount_str = f"{amount_yi:.2f}亿"
@@ -260,11 +279,11 @@ def main():
             "pe_num": round(pe, 1),
             "net_inflow": amount_str,
             "net_inflow_num": round(amount_yi, 2),
+            "kline_pattern": kline_pattern,
             "tag": tag,
             "reason": reason
         })
 
-    # 板块表现统计
     top_sectors = []
     for sec_name, st in board_stats.items():
         if st["count"] > 0:
@@ -275,8 +294,6 @@ def main():
                 "net_inflow": round(st["amount_sum"], 1)
             })
     top_sectors.sort(key=lambda x: x["avg_change"], reverse=True)
-
-    # 默认按涨跌幅降序
     stocks.sort(key=lambda x: x["change_num"], reverse=True)
 
     yesterday_perf = evaluate_yesterday_performance(today_price_map)
@@ -318,7 +335,7 @@ def main():
     with open("history/dates.json", "w", encoding="utf-8") as f:
         json.dump(history_files, f, ensure_ascii=False, indent=2)
 
-    print(f"大功告成！全市场共收录 {len(stocks)} 只A股，已完整写入 data.json！")
+    print(f"大功告成！全市场共收录 {len(stocks)} 只A股及K线形态解读！")
 
 if __name__ == "__main__":
     main()
