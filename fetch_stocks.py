@@ -1,62 +1,164 @@
-import akshare as ak
-import pandas as pd
 import json
+import time
+import requests
 from datetime import datetime, timezone, timedelta
 
+# 伪装浏览器请求头，防止被接口拦截
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://finance.sina.com.cn/"
+}
+
+def fetch_sina_candidates():
+    """
+    从新浪财经行情中心拉取换手率活跃及涨幅居前的A股候选池（对GitHub海外IP极度友好）
+    """
+    url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData"
+    candidates = {}
+
+    # 分别按【换手率】和【涨跌幅】拉取前几页最活跃的股票，避免全量翻页被封
+    tasks = [
+        ("turnoverratio", range(1, 6)),  # 换手率排名前 400
+        ("changepercent", range(2, 7)),  # 避开已涨停一字板，取涨幅前列股票
+    ]
+
+    for sort_field, pages in tasks:
+        for page in pages:
+            params = {
+                "page": page,
+                "num": 80,
+                "sort": sort_field,
+                "asc": 0,
+                "node": "hs_a",
+                "symbol": "",
+                "_s_r_a": "page"
+            }
+            try:
+                resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
+                if resp.status_code == 200 and resp.text:
+                    data = resp.json()
+                    if isinstance(data, list):
+                        for item in data:
+                            code = str(item.get("code", ""))
+                            candidates[code] = item
+                time.sleep(0.3)
+            except Exception as e:
+                print(f"拉取新浪行情分片 ({sort_field}-第{page}页) 跳过: {e}")
+
+    return list(candidates.values())
+
+def fetch_tencent_volume_ratio(symbols):
+    """
+    通过腾讯财经CDN接口批量补全候选股票的【量比】指标
+    """
+    vol_ratios = {}
+    batch_size = 40
+    for i in range(0, len(symbols), batch_size):
+        batch = symbols[i:i + batch_size]
+        q_str = ",".join(batch)
+        url = f"http://qt.gtimg.cn/q={q_str}"
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=10)
+            resp.encoding = "gbk"
+            for line in resp.text.strip().split(";"):
+                if "~" not in line:
+                    continue
+                parts = line.split("~")
+                if len(parts) > 49:
+                    code = parts[2]
+                    try:
+                        vol_ratios[code] = float(parts[49])
+                    except ValueError:
+                        vol_ratios[code] = 1.0
+        except Exception as e:
+            print(f"获取腾讯量比数据跳过: {e}")
+    return vol_ratios
+
 def main():
-    print("开始抓取A股实时行情数据...")
-    # 获取A股全市场实时行情
-    df = ak.stock_zh_a_spot_em()
+    print("开始通过新浪+腾讯双通道抓取A股行情数据...")
+    raw_list = fetch_sina_candidates()
+    print(f"成功获取 {len(raw_list)} 只活跃A股候选数据，正在筛选...")
 
-    # 1. 基础过滤：剔除 ST股、退市股、北交所（可根据喜好保留），剔除停牌或无价格股票
-    df = df[~df['名称'].str.contains('ST|退')]
-    df = df[~df['代码'].str.startswith(('8', '4'))]
-    df = df.dropna(subset=['最新价', '涨跌幅', '换手率', '量比'])
+    # 1. 基础过滤：剔除 ST股、退市股、北交所（8/4/92开头）及低价股
+    filtered = []
+    symbols_to_query = []
+    for item in raw_list:
+        name = str(item.get("name", ""))
+        code = str(item.get("code", ""))
+        symbol = str(item.get("symbol", ""))
 
-    # 2. 策略一：【量价突破】（涨幅在 3%~8.5% 之间，未涨停但强势；换手率 5%~15% 资金活跃；量比 > 1.8 明显放量）
-    cond_breakout = (
-        (df['涨跌幅'] >= 3.0) & (df['涨跌幅'] <= 8.5) &
-        (df['换手率'] >= 5.0) & (df['换手率'] <= 15.0) &
-        (df['量比'] >= 1.8) &
-        (df['最新价'] >= 5.0)
-    )
-    df_breakout = df[cond_breakout].sort_values(by='量比', ascending=False).head(15)
+        if "ST" in name or "退" in name or code.startswith(("8", "4", "92")):
+            continue
 
-    # 3. 策略二：【活跃异动】（涨幅 1%~4% 温和蓄势，换手率 > 8%，量比 > 1.5）
-    cond_active = (
-        (df['涨跌幅'] >= 1.0) & (df['涨跌幅'] < 3.0) &
-        (df['换手率'] >= 8.0) & (df['换手率'] <= 20.0) &
-        (df['量比'] >= 1.5) &
-        (df['最新价'] >= 5.0)
-    )
-    df_active = df[cond_active].sort_values(by='换手率', ascending=False).head(15)
+        try:
+            price = float(item.get("trade", 0))
+            change = float(item.get("changepercent", 0))
+            turnover = float(item.get("turnoverratio", 0))
+        except (ValueError, TypeError):
+            continue
+
+        # 仅保留价格 >= 5元、当日上涨且未涨停封死（1% ~ 8.8%）、换手率 >= 4% 的活跃标的
+        if price >= 5.0 and 1.0 <= change <= 8.8 and turnover >= 4.0:
+            item["_price"] = price
+            item["_change"] = change
+            item["_turnover"] = turnover
+            filtered.append(item)
+            if symbol:
+                symbols_to_query.append(symbol)
+
+    # 2. 批量获取精确量比
+    vol_ratios = fetch_tencent_volume_ratio(symbols_to_query)
+
+    breakout_list = []
+    active_list = []
+
+    for item in filtered:
+        code = str(item.get("code", ""))
+        vr = vol_ratios.get(code, 1.5)
+        item["_vr"] = vr
+        change = item["_change"]
+        turnover = item["_turnover"]
+
+        # 策略一：【量价突破】（涨幅 3.0%~8.5%，换手率 5%~18%，量比 >= 1.5）
+        if 3.0 <= change <= 8.5 and 5.0 <= turnover <= 18.0 and vr >= 1.5:
+            breakout_list.append(item)
+        # 策略二：【活跃异动】（涨幅 1.0%~3.0% 温和蓄势，换手率 >= 6%，量比 >= 1.2）
+        elif 1.0 <= change < 3.0 and 6.0 <= turnover <= 25.0 and vr >= 1.2:
+            active_list.append(item)
+
+    # 按量比和换手率排序，各取前 15 只
+    breakout_list.sort(key=lambda x: x["_vr"], reverse=True)
+    active_list.sort(key=lambda x: x["_turnover"], reverse=True)
 
     stocks = []
-    
-    for _, row in df_breakout.iterrows():
+    for row in breakout_list[:15]:
         stocks.append({
-            "code": str(row['代码']),
-            "name": str(row['名称']),
-            "price": f"{row['最新价']:.2f}",
-            "change": f"+{row['涨跌幅']:.2f}%",
-            "change_num": float(row['涨跌幅']),
-            "turnover": f"{row['换手率']:.2f}%",
-            "volume_ratio": f"{row['量比']:.2f}",
+            "code": str(row["code"]),
+            "name": str(row["name"]),
+            "price": f"{row['_price']:.2f}",
+            "change": f"+{row['_change']:.2f}%",
+            "change_num": round(row["_change"], 2),
+            "turnover": f"{row['_turnover']:.2f}%",
+            "volume_ratio": f"{row['_vr']:.2f}",
             "tag": "量价突破",
-            "reason": f"今日放量上攻（量比{row['量比']:.1f}），换手充分（{row['换手率']:.1f}%），资金介入明显"
+            "reason": f"放量上攻（量比{row['_vr']:.1f}），换手充分（{row['_turnover']:.1f}%），资金介入明显"
         })
 
-    for _, row in df_active.iterrows():
+    for row in active_list[:15]:
         stocks.append({
-            "code": str(row['代码']),
-            "name": str(row['名称']),
-            "price": f"{row['最新价']:.2f}",
-            "change": f"+{row['涨跌幅']:.2f}%",
-            "change_num": float(row['涨跌幅']),
-            "turnover": f"{row['换手率']:.2f}%",
-            "volume_ratio": f"{row['量比']:.2f}",
+            "code": str(row["code"]),
+            "name": str(row["name"]),
+            "price": f"{row['_price']:.2f}",
+            "change": f"+{row['_change']:.2f}%",
+            "change_num": round(row["_change"], 2),
+            "turnover": f"{row['_turnover']:.2f}%",
+            "volume_ratio": f"{row['_vr']:.2f}",
             "tag": "活跃异动",
-            "reason": f"温和上涨蓄势，高换手率（{row['换手率']:.1f}%）伴随放量，存在异动潜力"
+            "reason": f"温和上涨蓄势，高换手率（{row['_turnover']:.1f}%）伴随放量，存在异动潜力"
         })
 
     # 生成北京时间
@@ -70,7 +172,8 @@ def main():
 
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
-    print(f"成功筛选出 {len(stocks)} 只潜力股，已写入 data.json")
+
+    print(f"成功筛选出 {len(stocks)} 只潜力股，已写入 data.json！")
 
 if __name__ == "__main__":
     main()
