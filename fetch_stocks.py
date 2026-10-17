@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 
 HEADERS = {
@@ -23,7 +24,6 @@ def get_market_overview():
             if "~" not in line:
                 continue
             parts = line.split("~")
-            # parts[1]:名称, parts[2]:代码, parts[3]:当前点位, parts[4]:昨收点位
             if len(parts) > 5:
                 cur_p = float(parts[3])
                 pre_close = float(parts[4])
@@ -39,34 +39,50 @@ def get_market_overview():
         print(f"获取大盘指数失败: {e}")
     return indices
 
-def fetch_all_a_shares():
-    """
-    单次批量拉取全市场 5300+ 只 A 股核心指标
-    包含：代码、名称、最新价、涨跌幅、换手率、量比、总市值、市盈率等
-    """
+def fetch_single_page(page):
+    """抓取单页数据（每页100条）"""
     url = "https://push2.eastmoney.com/api/qt/clist/get"
     params = {
-        "pn": 1,
-        "pz": 6000,  # 一次性获取全量数据，无需循环分页
+        "pn": page,
+        "pz": 100,
         "po": 1,
         "np": 1,
         "fltt": 2,
         "invt": 2,
-        "fid": "f3", # 按涨跌幅降序
-        "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048", # 覆盖沪深A股及北交所
-        "fields": "f12,f14,f2,f3,f8,f10,f20,f9" 
-        # f12:代码, f14:名称, f2:现价, f3:涨幅, f8:换手率, f10:量比, f20:总市值, f9:动态市盈率
+        "fid": "f3",
+        "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048",
+        "fields": "f12,f14,f2,f3,f8,f10,f20,f9"
     }
+    try:
+        resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            return res_json.get("data", {}).get("diff", [])
+    except Exception as e:
+        print(f"拉取第 {page} 页失败: {e}")
+    return []
 
-    resp = requests.get(url, params=params, headers=HEADERS, timeout=20)
-    data = resp.json()
-    raw_list = data.get("data", {}).get("diff", [])
-    return raw_list
+def fetch_all_a_shares():
+    """
+    并发拉取 55 页（每页100只，覆盖全市场 5400+ 只 A 股）
+    使用 8 线程并发，3秒左右即可全部取完
+    """
+    total_pages = 56
+    all_records = []
+    
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(fetch_single_page, page) for page in range(1, total_pages + 1)]
+        for f in as_completed(futures):
+            res = f.result()
+            if res:
+                all_records.extend(res)
+                
+    return all_records
 
 def main():
-    print("开始拉取全市场 A 股完整行情（5000+只）...")
+    print("开始并发抓取全市场 A 股完整行情（5000+只）...")
     raw_list = fetch_all_a_shares()
-    print(f"成功获取到 {len(raw_list)} 只股票数据，开始打标签与清洗...")
+    print(f"成功获取到 {len(raw_list)} 条原始行情记录，开始打标签与清洗...")
 
     indices = get_market_overview()
 
@@ -74,10 +90,15 @@ def main():
     up_count = 0
     down_count = 0
     limit_up = 0
+    seen_codes = set()
 
     for item in raw_list:
         code = str(item.get("f12", ""))
         name = str(item.get("f14", ""))
+
+        if not code or code in seen_codes:
+            continue
+        seen_codes.add(code)
 
         # 价格与涨跌幅清洗
         price_val = item.get("f2")
@@ -85,16 +106,19 @@ def main():
         if price_val == "-" or chg_val == "-" or price_val is None or chg_val is None:
             continue
 
-        price = float(price_val)
-        chg = float(chg_val)
-        to = float(item.get("f8", 0)) if item.get("f8") != "-" and item.get("f8") is not None else 0.0
-        vr = float(item.get("f10", 1.0)) if item.get("f10") != "-" and item.get("f10") is not None else 1.0
-        mv_raw = item.get("f20")
-        mv = (float(mv_raw) / 100000000.0) if mv_raw and mv_raw != "-" else 0.0 # 转为亿元
-        pe_raw = item.get("f9")
-        pe = float(pe_raw) if pe_raw and pe_raw != "-" else 0.0
+        try:
+            price = float(price_val)
+            chg = float(chg_val)
+            to = float(item.get("f8", 0)) if item.get("f8") != "-" and item.get("f8") is not None else 0.0
+            vr = float(item.get("f10", 1.0)) if item.get("f10") != "-" and item.get("f10") is not None else 1.0
+            mv_raw = item.get("f20")
+            mv = (float(mv_raw) / 100000000.0) if mv_raw and mv_raw != "-" else 0.0
+            pe_raw = item.get("f9")
+            pe = float(pe_raw) if pe_raw and pe_raw != "-" else 0.0
+        except (ValueError, TypeError):
+            continue
 
-        # 统计涨跌
+        # 统计涨跌家数
         if chg > 0:
             up_count += 1
             if chg >= 9.8:
@@ -110,7 +134,7 @@ def main():
         else:
             symbol = f"bj{code}"
 
-        # 潜力股筛选逻辑打标
+        # 潜力股筛选策略
         tag = "全市场"
         reason = "普通流通股"
         is_st = "ST" in name or "退" in name
@@ -147,7 +171,9 @@ def main():
             "reason": reason
         })
 
-    # 北京时间
+    # 默认按涨跌幅降序
+    stocks.sort(key=lambda x: x["change_num"], reverse=True)
+
     tz_bj = timezone(timedelta(hours=8))
     now = datetime.now(tz_bj)
     date_str = now.strftime("%Y-%m-%d")
@@ -166,16 +192,14 @@ def main():
         "stocks": stocks
     }
 
-    # 写入 data.json
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    # 写入历史归档
     os.makedirs("history", exist_ok=True)
     with open(f"history/{date_str}.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"数据全部生成完成！已收录 {len(stocks)} 只 A 股公司至 data.json。")
+    print(f"数据处理完毕！全市场共收录 {len(stocks)} 只股票，已写入 data.json。")
 
 if __name__ == "__main__":
     main()
