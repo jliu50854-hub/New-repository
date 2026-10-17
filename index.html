@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A股每日潜力股雷达 & 战绩看板</title>
+    <title>A股全市场实时行情与潜力雷达</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .up { color: #dc2626; font-weight: 600; }
@@ -15,73 +15,71 @@
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
     <!-- 顶部导航 -->
-    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+    <header class="bg-slate-900 text-white shadow sticky top-0 z-40">
         <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center space-x-2">
-                <span class="text-2xl">⚡</span>
-                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股每日潜力雷达 & 实战复盘</h1>
+                <span class="text-2xl">🌐</span>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股全市场行情与潜力雷达</h1>
             </div>
             <div class="flex items-center space-x-3 text-xs md:text-sm">
-                <span id="update-time" class="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">正在同步数据...</span>
+                <span id="market-stat" class="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">正在同步全市场行情...</span>
             </div>
         </div>
     </header>
 
     <main class="container mx-auto px-4 py-6 flex-1 space-y-6">
 
-        <!-- 1. 大盘情绪与回测战绩看板 -->
+        <!-- 1. 顶部大盘与情绪统计 -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <!-- 大盘指数卡片 -->
             <div class="md:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">三大指数概况</h2>
-                <div id="index-cards" class="grid grid-cols-3 gap-2 text-center">
-                    <div class="p-2 bg-slate-50 rounded-lg">上证指数: --</div>
-                    <div class="p-2 bg-slate-50 rounded-lg">深证成指: --</div>
-                    <div class="p-2 bg-slate-50 rounded-lg">创业板指: --</div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">三大指数</h2>
+                <div id="index-cards" class="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div class="p-2 bg-slate-50 rounded">上证指数: --</div>
+                    <div class="p-2 bg-slate-50 rounded">深证成指: --</div>
+                    <div class="p-2 bg-slate-50 rounded">创业板指: --</div>
                 </div>
             </div>
 
-            <!-- 昨日选股胜率追踪 -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">昨日选股次日表现</h2>
-                <div class="flex items-baseline justify-between mt-2">
-                    <div>
-                        <div class="text-xs text-slate-400" id="perf-date">追踪日期: --</div>
-                        <div class="text-2xl font-bold text-indigo-600" id="perf-winrate">--</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-xs text-slate-400">平均次日涨幅</div>
-                        <div class="text-lg font-bold" id="perf-avg">--</div>
-                    </div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">市场涨跌分布</h2>
+                <div class="flex items-center justify-between mt-2">
+                    <div class="text-red-600 font-bold text-lg" id="stat-up">上涨: --</div>
+                    <div class="text-green-600 font-bold text-lg" id="stat-down">下跌: --</div>
+                    <div class="text-rose-700 font-bold text-xs bg-red-50 px-2 py-1 rounded" id="stat-limit">涨停: --</div>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-2">基于上一期入选标的在今日收盘的真实溢价统计</div>
+                <div class="text-[11px] text-slate-400 mt-2">覆盖全市场主板、科创板、创业板、北交所</div>
             </div>
 
-            <!-- 自选收藏夹统计 -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">我的自选池</h2>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">我的自选</h2>
                 <div class="flex items-center justify-between mt-2">
                     <span class="text-3xl font-extrabold text-amber-500" id="fav-count">0</span>
-                    <button onclick="filterStocks('fav')" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition">只看板内自选</button>
+                    <button onclick="setFilter('fav')" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100">查看自选股</button>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-2">标星自选保存在本地浏览器中，随时对照</div>
+                <div class="text-[11px] text-slate-400 mt-2">浏览器本地储存，不丢失</div>
             </div>
         </section>
 
-        <!-- 2. 操作筛选栏 -->
+        <!-- 2. 筛选、搜索与分页控制栏 -->
         <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap gap-2 text-sm">
-                <button onclick="filterStocks('all')" class="filter-btn active-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium shadow-sm">全部标的</button>
-                <button onclick="filterStocks('量价突破')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">量价突破</button>
-                <button onclick="filterStocks('温和蓄势')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">温和蓄势</button>
-                <button onclick="filterStocks('高换手博弈')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">高换手博弈</button>
+                <button onclick="setFilter('all')" class="filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium" data-type="all">全部A股 (5000+)</button>
+                <button onclick="setFilter('量价突破')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="量价突破">🔥 量价突破</button>
+                <button onclick="setFilter('温和蓄势')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="温和蓄势">🌱 温和蓄势</button>
+                <button onclick="setFilter('高换手博弈')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="高换手博弈">⚡ 高换手博弈</button>
             </div>
-            <div class="flex items-center space-x-2">
-                <input type="text" id="search-input" onkeyup="searchStock()" placeholder="搜索代码、简称..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div class="flex items-center space-x-3">
+                <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜索代码或名称（如 600519 / 茅台）..." class="w-64 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-slate-600">
+                    <option value="20">每页 20 条</option>
+                    <option value="50" selected>每页 50 条</option>
+                    <option value="100">每页 100 条</option>
+                </select>
             </div>
         </section>
 
-        <!-- 3. 股票行情与分析列表 -->
+        <!-- 3. 表格列表 -->
         <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
@@ -95,25 +93,33 @@
                             <th class="p-3 sort-btn" onclick="sortTable('volume_ratio_num')">量比 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('market_cap_num')">总市值 ⇕</th>
                             <th class="p-3">市盈率 (PE)</th>
-                            <th class="p-3">策略标签 / 选拔逻辑</th>
-                            <th class="p-3 text-center">图表</th>
+                            <th class="p-3">分类标签 / 逻辑</th>
+                            <th class="p-3 text-center">走势图</th>
                         </tr>
                     </thead>
                     <tbody id="stock-table-body" class="divide-y divide-slate-100">
-                        <tr><td colspan="10" class="p-8 text-center text-slate-400">正在获取数据，请稍候...</td></tr>
+                        <tr><td colspan="10" class="p-8 text-center text-slate-400">正在载入全量行情...</td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- 分页条 -->
+            <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex flex-wrap justify-between items-center text-sm text-slate-500 gap-2">
+                <div id="page-info">共 0 条数据</div>
+                <div class="flex space-x-1" id="pagination-controls">
+                    <!-- 分页按钮 -->
+                </div>
             </div>
         </section>
     </main>
 
-    <!-- 弹窗：K线图与分时图预览 Modal -->
-    <div id="chart-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="closeChartModal(event)">
+    <!-- 图表预览弹窗 -->
+    <div id="chart-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="toggleModal(false)">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 id="modal-title" class="text-lg font-bold text-slate-800">股票图表</h3>
-                    <p id="modal-subtitle" class="text-xs text-slate-400">点击标签切换分时/日K</p>
+                    <p class="text-xs text-slate-400">点击下方按钮可切换分时图与日K线</p>
                 </div>
                 <button onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
             </div>
@@ -129,89 +135,75 @@
         </div>
     </div>
 
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        免责声明：本页面数据及策略仅用于量化技术研究，不构成任何投资买卖建议。投资有风险，入市需谨慎。
-    </footer>
-
     <script>
-        let stockData = [];
+        let allStocks = [];
+        let filteredStocks = [];
+        let currentPage = 1;
+        let pageSize = 50;
         let currentFilter = 'all';
-        let sortKey = null;
+        let sortKey = 'change_num';
         let sortAsc = false;
         let favorites = JSON.parse(localStorage.getItem('my_stock_favs') || '[]');
         let currentSymbol = '';
         let currentChartType = 'min';
 
-        // 读取每日数据
         async function loadData() {
             try {
                 const res = await fetch('./data.json?t=' + Date.now());
                 const data = await res.json();
                 
-                document.getElementById('update-time').innerText = '最后同步: ' + data.update_time;
-                stockData = data.stocks || [];
-                
-                renderMarketOverview(data.market_overview);
-                renderPerformance(data.yesterday_performance);
+                document.getElementById('market-stat').innerText = `已载入 ${data.total_count || data.stocks.length} 只股票 | 更新于: ${data.update_time}`;
+                allStocks = data.stocks || [];
+
+                if (data.market_overview) {
+                    renderOverview(data.market_overview);
+                }
+
                 updateFavCount();
-                renderTable(stockData);
+                applyFilterAndSort();
             } catch (err) {
                 document.getElementById('stock-table-body').innerHTML = 
-                    '<tr><td colspan="10" class="p-8 text-center text-rose-500 font-medium">未能读取到数据文件，请确认 GitHub Actions 是否已成功跑完一次任务。</td></tr>';
+                    '<tr><td colspan="10" class="p-8 text-center text-rose-500 font-medium">未能读取到 data.json，请在 GitHub Actions 运行更新任务。</td></tr>';
             }
         }
 
-        // 渲染大盘指数
-        function renderMarketOverview(overview) {
-            if (!overview || !overview.indices) return;
-            const container = document.getElementById('index-cards');
-            container.innerHTML = overview.indices.map(idx => {
-                const isUp = idx.change_num >= 0;
-                return `
-                    <div class="p-2.5 rounded-lg border ${isUp ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}">
-                        <div class="text-xs font-semibold text-slate-600">${idx.name}</div>
-                        <div class="text-sm font-bold ${isUp ? 'up' : 'down'}">${idx.price}</div>
-                        <div class="text-xs ${isUp ? 'up' : 'down'}">${idx.change}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // 渲染战绩统计
-        function renderPerformance(perf) {
-            if (!perf || !perf.tracked_date) return;
-            document.getElementById('perf-date').innerText = '对比基准: ' + perf.tracked_date;
-            document.getElementById('perf-winrate').innerText = perf.win_rate;
-            const avgElem = document.getElementById('perf-avg');
-            avgElem.innerText = perf.avg_change;
-            if (perf.avg_change.includes('+')) {
-                avgElem.className = 'text-lg font-bold up';
-            } else if (perf.avg_change.includes('-')) {
-                avgElem.className = 'text-lg font-bold down';
+        function renderOverview(overview) {
+            if (overview.indices) {
+                document.getElementById('index-cards').innerHTML = overview.indices.map(idx => {
+                    const isUp = idx.change_num >= 0;
+                    return `
+                        <div class="p-2 rounded border ${isUp ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}">
+                            <div class="text-xs font-semibold text-slate-600">${idx.name}</div>
+                            <div class="text-sm font-bold ${isUp ? 'up' : 'down'}">${idx.price}</div>
+                            <div class="text-xs ${isUp ? 'up' : 'down'}">${idx.change}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            if (overview.up_count !== undefined) {
+                document.getElementById('stat-up').innerText = `上涨: ${overview.up_count}`;
+                document.getElementById('stat-down').innerText = `下跌: ${overview.down_count}`;
+                document.getElementById('stat-limit').innerText = `涨停: ${overview.limit_up}`;
             }
         }
 
-        // 渲染表格
-        function renderTable(data) {
-            const tbody = document.getElementById('stock-table-body');
-            tbody.innerHTML = '';
+        function applyFilterAndSort() {
+            let list = [...allStocks];
 
-            let list = [...data];
-
-            // 过滤
+            // 1. 标签筛选
             if (currentFilter === 'fav') {
                 list = list.filter(s => favorites.includes(s.code));
             } else if (currentFilter !== 'all') {
                 list = list.filter(s => s.tag === currentFilter);
             }
 
-            // 搜索
+            // 2. 搜索
             const q = document.getElementById('search-input').value.trim().toLowerCase();
             if (q) {
                 list = list.filter(s => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
             }
 
-            // 排序
+            // 3. 排序
             if (sortKey) {
                 list.sort((a, b) => {
                     let vA = parseFloat(a[sortKey]) || 0;
@@ -220,12 +212,32 @@
                 });
             }
 
-            if (list.length === 0) {
+            filteredStocks = list;
+            currentPage = 1;
+            renderPage();
+        }
+
+        function renderPage() {
+            const tbody = document.getElementById('stock-table-body');
+            tbody.innerHTML = '';
+
+            const total = filteredStocks.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredStocks.slice(start, end);
+
+            document.getElementById('page-info').innerText = `显示第 ${total === 0 ? 0 : start + 1} 至 ${Math.min(end, total)} 条，共 ${total} 条`;
+
+            if (pageData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-400">未找到符合条件的股票</td></tr>';
+                renderPagination(0, 1);
                 return;
             }
 
-            list.forEach(s => {
+            pageData.forEach(s => {
                 const isFav = favorites.includes(s.code);
                 const isUp = s.change_num >= 0;
                 const emLink = `https://quote.eastmoney.com/${s.symbol}.html`;
@@ -234,62 +246,77 @@
                 tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
                 tr.innerHTML = `
                     <td class="p-3 text-center">
-                        <button onclick="toggleFav('${s.code}')" class="text-base select-none ${isFav ? 'star-active' : 'text-slate-300 hover:text-amber-400'}">
-                            ★
-                        </button>
+                        <button onclick="toggleFav('${s.code}')" class="text-base select-none ${isFav ? 'star-active' : 'text-slate-300 hover:text-amber-400'}">★</button>
                     </td>
                     <td class="p-3">
                         <a href="${emLink}" target="_blank" class="font-bold text-slate-800 hover:text-blue-600">${s.name}</a>
-                        <div class="text-xs font-mono text-slate-400">${s.code}</div>
+                        <span class="text-xs font-mono text-slate-400 ml-1">${s.code}</span>
                     </td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.price}</td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.change}</td>
                     <td class="p-3 font-mono">${s.turnover}</td>
-                    <td class="p-3 font-mono font-medium">${s.volume_ratio}</td>
+                    <td class="p-3 font-mono">${s.volume_ratio}</td>
                     <td class="p-3 font-mono text-slate-600">${s.market_cap}</td>
                     <td class="p-3 font-mono text-slate-600">${s.pe}</td>
                     <td class="p-3">
-                        <span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold mr-1.5">${s.tag}</span>
-                        <span class="text-xs text-slate-500">${s.reason}</span>
+                        ${s.tag !== '全市场' ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold mr-1">${s.tag}</span>` : ''}
+                        <span class="text-xs text-slate-400">${s.reason}</span>
                     </td>
                     <td class="p-3 text-center">
-                        <button onclick="openChartModal('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200">
-                            趋势
-                        </button>
+                        <button onclick="openChart('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200">看图</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            renderPagination(totalPages, currentPage);
         }
 
-        // 自选收藏
-        function toggleFav(code) {
-            if (favorites.includes(code)) {
-                favorites = favorites.filter(c => c !== code);
-            } else {
-                favorites.push(code);
-            }
-            localStorage.setItem('my_stock_favs', JSON.stringify(favorites));
-            updateFavCount();
-            renderTable(stockData);
+        function renderPagination(totalPages, page) {
+            const container = document.getElementById('pagination-controls');
+            container.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.innerText = '上一页';
+            prevBtn.disabled = page === 1;
+            prevBtn.className = `px-2 py-1 rounded text-xs border ${page === 1 ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
+            prevBtn.onclick = () => { currentPage--; renderPage(); };
+            container.appendChild(prevBtn);
+
+            const currText = document.createElement('span');
+            currText.className = 'px-2 py-1 text-xs text-slate-600';
+            currText.innerText = `${page} / ${totalPages}`;
+            container.appendChild(currText);
+
+            const nextBtn = document.createElement('button');
+            nextBtn.innerText = '下一页';
+            nextBtn.disabled = page === totalPages;
+            nextBtn.className = `px-2 py-1 rounded text-xs border ${page === totalPages ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
+            nextBtn.onclick = () => { currentPage++; renderPage(); };
+            container.appendChild(nextBtn);
         }
 
-        function updateFavCount() {
-            document.getElementById('fav-count').innerText = favorites.length;
-        }
-
-        // 筛选与排序
-        function filterStocks(type) {
+        function setFilter(type) {
             currentFilter = type;
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.className = 'filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-type') === type) {
+                    btn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium';
+                } else {
+                    btn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
+                }
             });
-            event.target.className = 'filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium shadow-sm';
-            renderTable(stockData);
+            applyFilterAndSort();
         }
 
-        function searchStock() {
-            renderTable(stockData);
+        function handleSearch() {
+            applyFilterAndSort();
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('page-size').value, 10);
+            currentPage = 1;
+            renderPage();
         }
 
         function sortTable(key) {
@@ -299,46 +326,46 @@
                 sortKey = key;
                 sortAsc = false;
             }
-            renderTable(stockData);
+            applyFilterAndSort();
         }
 
-        // 图表弹窗逻辑
-        function openChartModal(symbol, title) {
+        function toggleFav(code) {
+            if (favorites.includes(code)) {
+                favorites = favorites.filter(c => c !== code);
+            } else {
+                favorites.push(code);
+            }
+            localStorage.setItem('my_stock_favs', JSON.stringify(favorites));
+            updateFavCount();
+            renderPage();
+        }
+
+        function updateFavCount() {
+            document.getElementById('fav-count').innerText = favorites.length;
+        }
+
+        function openChart(symbol, title) {
             currentSymbol = symbol;
             document.getElementById('modal-title').innerText = title;
             currentChartType = 'min';
-            updateChartImage();
+            updateChart();
             toggleModal(true);
         }
 
-        function closeChartModal(e) {
-            toggleModal(false);
-        }
-
         function toggleModal(show) {
-            const m = document.getElementById('chart-modal');
-            m.className = show ? 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4' : 'hidden';
+            document.getElementById('chart-modal').className = show ? 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4' : 'hidden';
         }
 
         function switchChartType(type) {
             currentChartType = type;
-            const btnMin = document.getElementById('btn-min');
-            const btnDaily = document.getElementById('btn-daily');
-            if (type === 'min') {
-                btnMin.className = 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium';
-                btnDaily.className = 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
-            } else {
-                btnDaily.className = 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium';
-                btnMin.className = 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
-            }
-            updateChartImage();
+            document.getElementById('btn-min').className = type === 'min' ? 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium' : 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
+            document.getElementById('btn-daily').className = type === 'daily' ? 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium' : 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
+            updateChart();
         }
 
-        function updateChartImage() {
-            const img = document.getElementById('chart-img');
+        function updateChart() {
             const mode = currentChartType === 'min' ? 'min' : 'daily';
-            // 使用新浪行情图片免鉴权接口
-            img.src = `https://image.sinajs.cn/newchart/${mode}/n/${currentSymbol}.gif?t=${Date.now()}`;
+            document.getElementById('chart-img').src = `https://image.sinajs.cn/newchart/${mode}/n/${currentSymbol}.gif?t=${Date.now()}`;
         }
 
         loadData();
