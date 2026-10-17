@@ -1,6 +1,6 @@
 {
   "date": "2026-10-17",
-  "update_time": "2026-10-17 14:37:11",
+  "update_time": "2026-10-17 14:42:35",
   "total_count": 100,
   "market_overview": {
     "indices": [
@@ -8,22 +8,22 @@
         "name": "上证指数",
         "code": "000001",
         "price": "3716.28",
-        "change": "+3723.80%",
-        "change_num": 3723.8
+        "change": "+0.24%",
+        "change_num": 0.24
       },
       {
         "name": "深证成指",
         "code": "399001",
         "price": "11802.46",
-        "change": "+11965.57%",
-        "change_num": 11965.57
+        "change": "-0.12%",
+        "change_num": -0.12
       },
       {
         "name": "创业板指",
         "code": "399006",
         "price": "2772.38",
-        "change": "+2831.89%",
-        "change_num": 2831.89
+        "change": "-0.39%",
+        "change_num": -0.39
       }
     ],
     "up_count": 100,
