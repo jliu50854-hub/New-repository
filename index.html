@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A股全市场实时行情与潜力雷达</title>
+    <title>A股全市场量化终端 & 潜力雷达</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .up { color: #dc2626; font-weight: 600; }
@@ -14,72 +14,140 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- 顶部导航 -->
+    <!-- 顶部导航与历史时光机 -->
     <header class="bg-slate-900 text-white shadow sticky top-0 z-40">
-        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center space-x-2">
-                <span class="text-2xl">🌐</span>
-                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股全市场行情与潜力雷达</h1>
+                <span class="text-2xl">🚀</span>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股全市场量化复盘终端</h1>
             </div>
-            <div class="flex items-center space-x-3 text-xs md:text-sm">
-                <span id="market-stat" class="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">正在同步全市场行情...</span>
+            <div class="flex flex-wrap items-center gap-3 text-xs md:text-sm">
+                <!-- 历史时光机下拉框 -->
+                <div class="flex items-center bg-slate-800 rounded-lg px-2.5 py-1 border border-slate-700">
+                    <span class="mr-1.5 text-slate-400">📅 历史时光机:</span>
+                    <select id="history-select" onchange="loadByDate(this.value)" class="bg-transparent text-white font-medium focus:outline-none cursor-pointer">
+                        <option value="latest">最新实时盘面</option>
+                    </select>
+                </div>
+                <span id="market-stat" class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">正在载入全市场行情...</span>
             </div>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-6 flex-1 space-y-6">
+    <main class="container mx-auto px-4 py-5 flex-1 space-y-4">
 
-        <!-- 1. 顶部大盘与情绪统计 -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="md:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">三大指数</h2>
+        <!-- AI 盘面综述横幅 -->
+        <div id="ai-banner" class="bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 text-white p-4 rounded-xl shadow-sm text-xs md:text-sm leading-relaxed">
+            🤖 正在生成今日 AI 量化复盘综述...
+        </div>
+
+        <!-- 1. 顶部看板：三大指数 + 领涨行业风口 + 涨跌情绪 + 昨日战绩 -->
+        <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <!-- 三大指数 (占4列) -->
+            <div class="md:col-span-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">三大指数 & 情绪温度</h2>
+                    <span id="stat-summary" class="text-xs font-semibold text-slate-500">涨:-- 跌:-- 涨停:--</span>
+                </div>
                 <div id="index-cards" class="grid grid-cols-3 gap-2 text-center text-sm">
-                    <div class="p-2 bg-slate-50 rounded">上证指数: --</div>
-                    <div class="p-2 bg-slate-50 rounded">深证成指: --</div>
-                    <div class="p-2 bg-slate-50 rounded">创业板指: --</div>
+                    <div class="p-2 bg-slate-50 rounded">上证: --</div>
+                    <div class="p-2 bg-slate-50 rounded">深证: --</div>
+                    <div class="p-2 bg-slate-50 rounded">创业: --</div>
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">市场涨跌分布</h2>
-                <div class="flex items-center justify-between mt-2">
-                    <div class="text-red-600 font-bold text-lg" id="stat-up">上涨: --</div>
-                    <div class="text-green-600 font-bold text-lg" id="stat-down">下跌: --</div>
-                    <div class="text-rose-700 font-bold text-xs bg-red-50 px-2 py-1 rounded" id="stat-limit">涨停: --</div>
+            <!-- 今日最强行业风口 Top 6 (占5列) -->
+            <div class="md:col-span-5 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">🔥 今日领涨行业风口 (点击板块可筛选)</h2>
+                    <button onclick="setSectorFilter('')" class="text-xs text-blue-600 hover:underline">重置板块</button>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-2">覆盖全市场主板、科创板、创业板、北交所</div>
+                <div id="sector-cards" class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="p-2 bg-slate-50 rounded text-center text-slate-400 col-span-3">正在统计行业资金流向...</div>
+                </div>
             </div>
 
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">我的自选</h2>
-                <div class="flex items-center justify-between mt-2">
-                    <span class="text-3xl font-extrabold text-amber-500" id="fav-count">0</span>
-                    <button onclick="setFilter('fav')" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100">查看自选股</button>
+            <!-- 昨日选股胜率 & 我的自选 (占3列) -->
+            <div class="md:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+                    <div>
+                        <h2 class="text-xs font-bold text-slate-500">昨日潜力股次日胜率</h2>
+                        <div class="text-[11px] text-slate-400" id="perf-date">基准: --</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-base font-extrabold text-indigo-600" id="perf-winrate">--</div>
+                        <div class="text-xs font-bold" id="perf-avg">溢价: --</div>
+                    </div>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-2">浏览器本地储存，不丢失</div>
+                <div class="flex items-center justify-between pt-2">
+                    <div>
+                        <span class="text-xs text-slate-500 font-bold">⭐ 自选收藏: </span>
+                        <span class="text-lg font-extrabold text-amber-500" id="fav-count">0</span>
+                    </div>
+                    <button onclick="setFilter('fav')" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded hover:bg-amber-100">只看自选</button>
+                </div>
             </div>
         </section>
 
-        <!-- 2. 筛选、搜索与分页控制栏 -->
-        <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex flex-wrap gap-2 text-sm">
-                <button onclick="setFilter('all')" class="filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium" data-type="all">全部A股 (5000+)</button>
-                <button onclick="setFilter('量价突破')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="量价突破">🔥 量价突破</button>
-                <button onclick="setFilter('温和蓄势')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="温和蓄势">🌱 温和蓄势</button>
-                <button onclick="setFilter('高换手博弈')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="高换手博弈">⚡ 高换手博弈</button>
+        <!-- 2. 主筛选、搜索与自定义选股控制栏 -->
+        <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex flex-wrap gap-3 items-center justify-between">
+                <div class="flex flex-wrap gap-1.5 text-xs md:text-sm">
+                    <button onclick="setFilter('all')" class="filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium" data-type="all">全部A股</button>
+                    <button onclick="setFilter('量价突破')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="量价突破">🔥 量价突破</button>
+                    <button onclick="setFilter('温和蓄势')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="温和蓄势">🌱 温和蓄势</button>
+                    <button onclick="setFilter('高换手博弈')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="高换手博弈">⚡ 高换手博弈</button>
+                    <button onclick="setFilter('涨停板')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="涨停板">🚩 今日涨停池</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="text" id="search-input" oninput="applyFilterAndSort()" placeholder="搜索代码/名称/行业 (如 600519 或 半导体)..." class="w-60 border border-slate-300 rounded-lg px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="toggleAdvPanel()" class="text-xs md:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 font-medium">⚙️ 多维选股器</button>
+                    <button onclick="exportCSV()" class="text-xs md:text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium">📥 导出Excel</button>
+                    <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs md:text-sm text-slate-600">
+                        <option value="20">20条/页</option>
+                        <option value="50" selected>50条/页</option>
+                        <option value="100">100条/页</option>
+                    </select>
+                </div>
             </div>
-            
-            <div class="flex items-center space-x-3">
-                <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜索代码或名称（如 600519 / 茅台）..." class="w-64 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-slate-600">
-                    <option value="20">每页 20 条</option>
-                    <option value="50" selected>每页 50 条</option>
-                    <option value="100">每页 100 条</option>
-                </select>
+
+            <!-- 折叠式：自定义组合选股器面板 -->
+            <div id="adv-panel" class="hidden pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-3 rounded-lg">
+                <div>
+                    <label class="font-bold text-slate-600 block mb-1">现价区间 (元):</label>
+                    <div class="flex items-center space-x-1">
+                        <input type="number" id="min-price" oninput="applyFilterAndSort()" placeholder="最低价" class="w-full border rounded px-2 py-1">
+                        <span>-</span>
+                        <input type="number" id="max-price" oninput="applyFilterAndSort()" placeholder="最高价" class="w-full border rounded px-2 py-1">
+                    </div>
+                </div>
+                <div>
+                    <label class="font-bold text-slate-600 block mb-1">总市值区间 (亿元):</label>
+                    <div class="flex items-center space-x-1">
+                        <input type="number" id="min-mv" oninput="applyFilterAndSort()" placeholder="最小市值" class="w-full border rounded px-2 py-1">
+                        <span>-</span>
+                        <input type="number" id="max-mv" oninput="applyFilterAndSort()" placeholder="最大市值" class="w-full border rounded px-2 py-1">
+                    </div>
+                </div>
+                <div>
+                    <label class="font-bold text-slate-600 block mb-1">主力净流入门槛 (亿元):</label>
+                    <input type="number" step="0.1" id="min-inflow" oninput="applyFilterAndSort()" placeholder="如填 0.5 代表净流入>5000万" class="w-full border rounded px-2 py-1">
+                </div>
+                <div class="flex flex-col justify-center space-y-1.5">
+                    <div class="flex flex-wrap gap-3">
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-st" onchange="applyFilterAndSort()" class="mr-1">剔除ST股</label>
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-kcb" onchange="applyFilterAndSort()" class="mr-1">剔除科创(688)</label>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-bj" onchange="applyFilterAndSort()" class="mr-1">剔除北交所</label>
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-loss" onchange="applyFilterAndSort()" class="mr-1">剔除亏损股(PE&lt;0)</label>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- 3. 表格列表 -->
+        <!-- 3. 股票全维数据表格 -->
         <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
@@ -87,48 +155,47 @@
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs select-none">
                             <th class="p-3 text-center">自选</th>
                             <th class="p-3">代码 / 名称</th>
-                            <th class="p-3 sort-btn" onclick="sortTable('price')">最新价 ⇕</th>
+                            <th class="p-3">所属行业</th>
+                            <th class="p-3 sort-btn" onclick="sortTable('price_num')">最新价 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('change_num')">涨跌幅 ⇕</th>
+                            <th class="p-3 sort-btn" onclick="sortTable('net_inflow_num')">主力净流入 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('turnover_num')">换手率 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('volume_ratio_num')">量比 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('market_cap_num')">总市值 ⇕</th>
-                            <th class="p-3">市盈率 (PE)</th>
-                            <th class="p-3">分类标签 / 逻辑</th>
-                            <th class="p-3 text-center">走势图</th>
+                            <th class="p-3 sort-btn" onclick="sortTable('pe_num')">PE ⇕</th>
+                            <th class="p-3">策略标签 / AI 资金与估值简评</th>
+                            <th class="p-3 text-center">K线</th>
                         </tr>
                     </thead>
-                    <tbody id="stock-table-body" class="divide-y divide-slate-100">
-                        <tr><td colspan="10" class="p-8 text-center text-slate-400">正在载入全量行情...</td></tr>
+                    <tbody id="stock-table-body" class="divide-y divide-slate-100 text-xs md:text-sm">
+                        <tr><td colspan="12" class="p-8 text-center text-slate-400">正在载入全市场行情数据...</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- 分页条 -->
-            <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex flex-wrap justify-between items-center text-sm text-slate-500 gap-2">
+            <!-- 分页控制条 -->
+            <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex flex-wrap justify-between items-center text-xs md:text-sm text-slate-500 gap-2">
                 <div id="page-info">共 0 条数据</div>
-                <div class="flex space-x-1" id="pagination-controls">
-                    <!-- 分页按钮 -->
-                </div>
+                <div class="flex space-x-1" id="pagination-controls"></div>
             </div>
         </section>
     </main>
 
-    <!-- 图表预览弹窗 -->
+    <!-- K线与分时图弹窗 -->
     <div id="chart-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="toggleModal(false)">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h3 id="modal-title" class="text-lg font-bold text-slate-800">股票图表</h3>
-                    <p class="text-xs text-slate-400">点击下方按钮可切换分时图与日K线</p>
+                    <h3 id="modal-title" class="text-lg font-bold text-slate-800">股票走势图</h3>
+                    <p class="text-xs text-slate-400">支持分时图、日K线、周K线快速切换</p>
                 </div>
                 <button onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
             </div>
-            
             <div class="flex space-x-2 mb-4 border-b pb-2">
                 <button id="btn-min" onclick="switchChartType('min')" class="text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium">分时图</button>
                 <button id="btn-daily" onclick="switchChartType('daily')" class="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium">日K线</button>
+                <button id="btn-weekly" onclick="switchChartType('weekly')" class="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium">周K线</button>
             </div>
-
             <div class="flex justify-center items-center bg-slate-50 rounded-xl p-2 min-h-[260px]">
                 <img id="chart-img" src="" alt="股票走势图" class="max-w-full rounded shadow-sm">
             </div>
@@ -141,33 +208,54 @@
         let currentPage = 1;
         let pageSize = 50;
         let currentFilter = 'all';
+        let currentSector = '';
         let sortKey = 'change_num';
         let sortAsc = false;
         let favorites = JSON.parse(localStorage.getItem('my_stock_favs') || '[]');
         let currentSymbol = '';
         let currentChartType = 'min';
 
-        async function loadData() {
+        // 初始化加载历史日期下拉菜单与最新数据
+        async function initApp() {
             try {
-                const res = await fetch('./data.json?t=' + Date.now());
+                const dRes = await fetch('./history/dates.json?t=' + Date.now());
+                if (dRes.ok) {
+                    const dates = await dRes.json();
+                    const sel = document.getElementById('history-select');
+                    dates.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d;
+                        opt.innerText = d;
+                        sel.appendChild(opt);
+                    });
+                }
+            } catch (e) {}
+            await loadByDate('latest');
+        }
+
+        async function loadByDate(dateVal) {
+            try {
+                const url = dateVal === 'latest' ? `./data.json?t=${Date.now()}` : `./history/${dateVal}.json?t=${Date.now()}`;
+                const res = await fetch(url);
                 const data = await res.json();
-                
-                document.getElementById('market-stat').innerText = `已载入 ${data.total_count || data.stocks.length} 只股票 | 更新于: ${data.update_time}`;
+
+                document.getElementById('market-stat').innerText = `共 ${data.total_count || data.stocks.length} 只A股 | 更新: ${data.update_time}`;
+                document.getElementById('ai-banner').innerText = data.ai_summary || '🤖 今日盘面数据已就绪，可通过下方热门板块或组合选股器挖掘潜力标的。';
                 allStocks = data.stocks || [];
 
-                if (data.market_overview) {
-                    renderOverview(data.market_overview);
-                }
-
+                renderOverview(data.market_overview);
+                renderSectors(data.top_sectors || []);
+                renderPerf(data.yesterday_performance);
                 updateFavCount();
                 applyFilterAndSort();
             } catch (err) {
                 document.getElementById('stock-table-body').innerHTML = 
-                    '<tr><td colspan="10" class="p-8 text-center text-rose-500 font-medium">未能读取到 data.json，请在 GitHub Actions 运行更新任务。</td></tr>';
+                    '<tr><td colspan="12" class="p-8 text-center text-rose-500 font-medium">数据加载失败，请确认 GitHub Actions 已运行完毕并刷新页面。</td></tr>';
             }
         }
 
         function renderOverview(overview) {
+            if (!overview) return;
             if (overview.indices) {
                 document.getElementById('index-cards').innerHTML = overview.indices.map(idx => {
                     const isUp = idx.change_num >= 0;
@@ -181,29 +269,97 @@
                 }).join('');
             }
             if (overview.up_count !== undefined) {
-                document.getElementById('stat-up').innerText = `上涨: ${overview.up_count}`;
-                document.getElementById('stat-down').innerText = `下跌: ${overview.down_count}`;
-                document.getElementById('stat-limit').innerText = `涨停: ${overview.limit_up}`;
+                document.getElementById('stat-summary').innerHTML = 
+                    `<span class="text-red-600">涨:${overview.up_count}</span> | <span class="text-green-600">跌:${overview.down_count}</span> | <span class="text-rose-700">涨停:${overview.limit_up}</span>`;
             }
+        }
+
+        function renderSectors(sectors) {
+            const box = document.getElementById('sector-cards');
+            if (!sectors.length) {
+                box.innerHTML = '<div class="col-span-3 text-center text-slate-400 py-2">暂无板块统计数据</div>';
+                return;
+            }
+            box.innerHTML = sectors.map(sec => {
+                const isUp = sec.avg_change >= 0;
+                const activeCls = currentSector === sec.name ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-slate-50 hover:bg-slate-100';
+                return `
+                    <div onclick="setSectorFilter('${sec.name}')" class="p-2 rounded border border-slate-200 cursor-pointer transition ${activeCls}">
+                        <div class="font-bold text-slate-700 truncate">${sec.name}</div>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="${isUp ? 'up' : 'down'}">${sec.avg_change >= 0 ? '+' : ''}${sec.avg_change}%</span>
+                            <span class="text-[11px] text-slate-400">净流:${sec.net_inflow}亿</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPerf(perf) {
+            if (!perf) return;
+            document.getElementById('perf-date').innerText = '基准: ' + (perf.tracked_date || '--');
+            document.getElementById('perf-winrate').innerText = perf.win_rate || '--';
+            const avgEl = document.getElementById('perf-avg');
+            avgEl.innerText = '均涨: ' + (perf.avg_change || '--');
+        }
+
+        function setSectorFilter(secName) {
+            currentSector = (currentSector === secName) ? '' : secName;
+            document.getElementById('search-input').value = currentSector;
+            applyFilterAndSort();
+        }
+
+        function toggleAdvPanel() {
+            const panel = document.getElementById('adv-panel');
+            panel.classList.toggle('hidden');
         }
 
         function applyFilterAndSort() {
             let list = [...allStocks];
 
-            // 1. 标签筛选
+            // 1. 策略标签筛选
             if (currentFilter === 'fav') {
                 list = list.filter(s => favorites.includes(s.code));
             } else if (currentFilter !== 'all') {
                 list = list.filter(s => s.tag === currentFilter);
             }
 
-            // 2. 搜索
+            // 2. 关键词/行业搜索
             const q = document.getElementById('search-input').value.trim().toLowerCase();
             if (q) {
-                list = list.filter(s => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+                list = list.filter(s => 
+                    s.code.toLowerCase().includes(q) || 
+                    s.name.toLowerCase().includes(q) || 
+                    (s.sector && s.sector.toLowerCase().includes(q))
+                );
             }
 
-            // 3. 排序
+            // 3. 多维自定义筛选器
+            const minP = parseFloat(document.getElementById('min-price').value);
+            const maxP = parseFloat(document.getElementById('max-price').value);
+            const minMv = parseFloat(document.getElementById('min-mv').value);
+            const maxMv = parseFloat(document.getElementById('max-mv').value);
+            const minInflow = parseFloat(document.getElementById('min-inflow').value);
+
+            const exSt = document.getElementById('ex-st').checked;
+            const exKcb = document.getElementById('ex-kcb').checked;
+            const exBj = document.getElementById('ex-bj').checked;
+            const exLoss = document.getElementById('ex-loss').checked;
+
+            list = list.filter(s => {
+                if (!isNaN(minP) && s.price_num < minP) return false;
+                if (!isNaN(maxP) && s.price_num > maxP) return false;
+                if (!isNaN(minMv) && s.market_cap_num < minMv) return false;
+                if (!isNaN(maxMv) && s.market_cap_num > maxMv) return false;
+                if (!isNaN(minInflow) && (s.net_inflow_num || 0) < minInflow) return false;
+                if (exSt && (s.name.includes('ST') || s.name.includes('退'))) return false;
+                if (exKcb && s.code.startsWith('688')) return false;
+                if (exBj && (s.code.startsWith('8') || s.code.startsWith('4') || s.code.startsWith('92'))) return false;
+                if (exLoss && s.pe === '亏损') return false;
+                return true;
+            });
+
+            // 4. 排序
             if (sortKey) {
                 list.sort((a, b) => {
                     let vA = parseFloat(a[sortKey]) || 0;
@@ -229,10 +385,10 @@
             const end = start + pageSize;
             const pageData = filteredStocks.slice(start, end);
 
-            document.getElementById('page-info').innerText = `显示第 ${total === 0 ? 0 : start + 1} 至 ${Math.min(end, total)} 条，共 ${total} 条`;
+            document.getElementById('page-info').innerText = `显示 ${total === 0 ? 0 : start + 1} - ${Math.min(end, total)} 条，共筛选出 ${total} 只股票`;
 
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-400">未找到符合条件的股票</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">未找到符合条件的股票</td></tr>';
                 renderPagination(0, 1);
                 return;
             }
@@ -240,6 +396,8 @@
             pageData.forEach(s => {
                 const isFav = favorites.includes(s.code);
                 const isUp = s.change_num >= 0;
+                const inflowNum = s.net_inflow_num || 0;
+                const inflowCls = inflowNum > 0 ? 'up' : (inflowNum < 0 ? 'down' : 'text-slate-500');
                 const emLink = `https://quote.eastmoney.com/${s.symbol}.html`;
 
                 const tr = document.createElement('tr');
@@ -250,20 +408,24 @@
                     </td>
                     <td class="p-3">
                         <a href="${emLink}" target="_blank" class="font-bold text-slate-800 hover:text-blue-600">${s.name}</a>
-                        <span class="text-xs font-mono text-slate-400 ml-1">${s.code}</span>
+                        <div class="text-xs font-mono text-slate-400">${s.code}</div>
+                    </td>
+                    <td class="p-3">
+                        <span onclick="setSectorFilter('${s.sector || ''}')" class="cursor-pointer bg-slate-100 hover:bg-blue-100 text-slate-700 px-2 py-0.5 rounded text-xs">${s.sector || '--'}</span>
                     </td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.price}</td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.change}</td>
+                    <td class="p-3 font-mono ${inflowCls}">${s.net_inflow || '--'}</td>
                     <td class="p-3 font-mono">${s.turnover}</td>
                     <td class="p-3 font-mono">${s.volume_ratio}</td>
                     <td class="p-3 font-mono text-slate-600">${s.market_cap}</td>
                     <td class="p-3 font-mono text-slate-600">${s.pe}</td>
                     <td class="p-3">
-                        ${s.tag !== '全市场' ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-xs font-semibold mr-1">${s.tag}</span>` : ''}
-                        <span class="text-xs text-slate-400">${s.reason}</span>
+                        ${s.tag !== '全市场' ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded text-xs font-semibold mr-1">${s.tag}</span>` : ''}
+                        <span class="text-xs text-slate-500">${s.reason}</span>
                     </td>
                     <td class="p-3 text-center">
-                        <button onclick="openChart('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200">看图</button>
+                        <button onclick="openChart('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200">K线</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -280,19 +442,19 @@
             const prevBtn = document.createElement('button');
             prevBtn.innerText = '上一页';
             prevBtn.disabled = page === 1;
-            prevBtn.className = `px-2 py-1 rounded text-xs border ${page === 1 ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
+            prevBtn.className = `px-2.5 py-1 rounded text-xs border ${page === 1 ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
             prevBtn.onclick = () => { currentPage--; renderPage(); };
             container.appendChild(prevBtn);
 
             const currText = document.createElement('span');
-            currText.className = 'px-2 py-1 text-xs text-slate-600';
-            currText.innerText = `${page} / ${totalPages}`;
+            currText.className = 'px-3 py-1 text-xs text-slate-600 font-medium';
+            currText.innerText = `第 ${page} / ${totalPages} 页`;
             container.appendChild(currText);
 
             const nextBtn = document.createElement('button');
             nextBtn.innerText = '下一页';
             nextBtn.disabled = page === totalPages;
-            nextBtn.className = `px-2 py-1 rounded text-xs border ${page === totalPages ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
+            nextBtn.className = `px-2.5 py-1 rounded text-xs border ${page === totalPages ? 'text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300'}`;
             nextBtn.onclick = () => { currentPage++; renderPage(); };
             container.appendChild(nextBtn);
         }
@@ -306,10 +468,6 @@
                     btn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
                 }
             });
-            applyFilterAndSort();
-        }
-
-        function handleSearch() {
             applyFilterAndSort();
         }
 
@@ -344,6 +502,25 @@
             document.getElementById('fav-count').innerText = favorites.length;
         }
 
+        // 导出当前筛选出的股票为 Excel (CSV)
+        function exportCSV() {
+            if (!filteredStocks.length) {
+                alert('当前没有可导出的数据！');
+                return;
+            }
+            const headers = ['股票代码', '股票名称', '所属行业', '最新价', '涨跌幅', '主力净流入', '换手率', '量比', '总市值', 'PE', '策略标签', '量化诊断'];
+            const rows = filteredStocks.map(s => [
+                `="${s.code}"`, s.name, s.sector || '', s.price, s.change, s.net_inflow || '', s.turnover, s.volume_ratio, s.market_cap, s.pe, s.tag, `"${s.reason}"`
+            ]);
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `A股筛选结果_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        }
+
         function openChart(symbol, title) {
             currentSymbol = symbol;
             document.getElementById('modal-title').innerText = title;
@@ -358,17 +535,19 @@
 
         function switchChartType(type) {
             currentChartType = type;
-            document.getElementById('btn-min').className = type === 'min' ? 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium' : 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
-            document.getElementById('btn-daily').className = type === 'daily' ? 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium' : 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
+            ['min', 'daily', 'weekly'].forEach(t => {
+                document.getElementById('btn-' + t).className = (t === type)
+                    ? 'text-xs px-3 py-1 bg-blue-600 text-white rounded font-medium'
+                    : 'text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium';
+            });
             updateChart();
         }
 
         function updateChart() {
-            const mode = currentChartType === 'min' ? 'min' : 'daily';
-            document.getElementById('chart-img').src = `https://image.sinajs.cn/newchart/${mode}/n/${currentSymbol}.gif?t=${Date.now()}`;
+            document.getElementById('chart-img').src = `https://image.sinajs.cn/newchart/${currentChartType}/n/${currentSymbol}.gif?t=${Date.now()}`;
         }
 
-        loadData();
+        initApp();
     </script>
 </body>
 </html>
