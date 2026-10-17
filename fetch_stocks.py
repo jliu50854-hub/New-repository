@@ -13,7 +13,7 @@ HEADERS = {
 }
 
 def get_market_overview():
-    """获取大盘主要指数点位"""
+    """获取大盘主要指数点位及真实涨跌幅"""
     url = "http://qt.gtimg.cn/q=sh000001,sz399001,sz399006"
     indices = []
     try:
@@ -23,13 +23,17 @@ def get_market_overview():
             if "~" not in line:
                 continue
             parts = line.split("~")
+            # parts[1]:名称, parts[2]:代码, parts[3]:当前点位, parts[4]:昨收点位
             if len(parts) > 5:
+                cur_p = float(parts[3])
+                pre_close = float(parts[4])
+                chg_pct = ((cur_p - pre_close) / pre_close * 100) if pre_close > 0 else 0.0
                 indices.append({
                     "name": parts[1],
                     "code": parts[2],
-                    "price": f"{float(parts[3]):.2f}",
-                    "change": f"{float(parts[5]):+.2f}%",
-                    "change_num": float(parts[5])
+                    "price": f"{cur_p:.2f}",
+                    "change": f"{chg_pct:+.2f}%",
+                    "change_num": round(chg_pct, 2)
                 })
     except Exception as e:
         print(f"获取大盘指数失败: {e}")
