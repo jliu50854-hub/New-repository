@@ -2,9 +2,9 @@ name: 每日A股潜力股自动更新
 
 on:
   schedule:
-    # UTC时间 07:30 对应北京时间 15:30（周一至周五收盘后自动运行）
-    - cron: '30 7 * * 1-5'
-  workflow_dispatch: # 允许你在网页上手动点击按钮立即运行
+    # 北京时间 15:35 自动触发（UTC 07:35）
+    - cron: '35 7 * * 1-5'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -21,18 +21,22 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 3. 安装行情数据依赖库
+      - name: 3. 安装依赖库
         run: |
-          pip install akshare pandas
+          pip install requests
 
-      - name: 4. 运行选股脚本生成最新 data.json
+      - name: 4. 运行选股与回测脚本
+        env:
+          # 如需开启手机消息推送，可在仓库 Settings -> Secrets 中设置 NOTIFY_WEBHOOK
+          NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          PAGE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           python fetch_stocks.py
 
-      - name: 5. 自动提交更新到仓库
+      - name: 5. 自动提交并保存历史记录
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add data.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "自动更新每日A股潜力股数据"
+          git add data.json history/
+          git diff --quiet && git diff --staged --quiet || git commit -m "自动更新每日潜力股与历史战绩"
           git push
