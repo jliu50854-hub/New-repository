@@ -14,6 +14,28 @@ HEADERS = {
     "Referer": "https://finance.sina.com.cn/"
 }
 
+# 核心热门概念词根映射（结合名称特征与板块属性自动关联热门题材）
+CONCEPT_KEYWORDS = {
+    "半导体/芯片": ["微", "芯", "半导", "光电", "集成", "华虹", "寒武", "海光", "北方华创"],
+    "人工智能/算力": ["智", "软", "网", "数", "信", "算", "云", "科技", "信息", "科大", "浪潮"],
+    "机器人/智能制造": ["机", "精工", "智能", "自动化", "传动", "数控", "埃斯顿", "汇川", "绿的"],
+    "新能源/固态电池": ["锂", "电", "能", "光伏", "风", "储", "阳光", "宁德", "比亚迪", "隆基"],
+    "低空经济/军工": ["航", "空", "飞", "防", "军", "卫", "雷", "中航", "船", "兵"],
+    "生物医药/创新药": ["药", "医", "生", "康", "疗", "健", "生物", "基因", "堂", "瑞"],
+    "大消费/食品白酒": ["酒", "食", "乳", "饮", "茶", "味", "百货", "旅", "传媒", "影视"],
+    "高股息/央国企": ["中", "国", "银行", "高速", "电力", "煤", "油", "交", "建", "神华"]
+}
+
+def infer_concepts(name, sector):
+    """根据股票特征智能推断所属热门题材概念"""
+    matched = []
+    for concept, kw_list in CONCEPT_KEYWORDS.items():
+        if any(k in name for k in kw_list):
+            matched.append(concept)
+    if not matched:
+        matched.append(sector)
+    return matched[:2]
+
 def get_market_overview():
     """获取三大指数实时点位与真实涨跌幅"""
     url = "http://qt.gtimg.cn/q=sh000001,sz399001,sz399006"
@@ -111,21 +133,21 @@ def analyze_single_kline(open_p, close_p, high_p, low_p, pre_close, chg, to):
     amplitude = (total_len / pre_close * 100) if pre_close > 0 else 0
 
     if close_p > open_p and chg >= 4.0 and upper_shadow <= total_len * 0.08 and lower_shadow <= total_len * 0.08:
-        return "光头大阳", "全天买盘逼空上行，多头力量极强，关注次日溢价"
+        return "光头大阳", "全天买盘逼空上行，多头力量极强"
     if amplitude >= 3.0 and lower_shadow >= total_len * 0.55 and upper_shadow <= total_len * 0.15:
         if close_p >= open_p:
-            return "金针探底", "日内深V反转，下方承接力极强，主力洗盘特征明显"
+            return "金针探底", "日内深V反转，下方承接极强，主力洗盘明显"
         else:
-            return "长下影线", "盘中恐慌盘涌出后获资金抄底承接，关注下影线低点支撑"
+            return "长下影线", "恐慌盘涌出后获资金抄底承接，关注下影支撑"
     if amplitude >= 3.5 and upper_shadow >= total_len * 0.55 and lower_shadow <= total_len * 0.15:
         if chg > 0 and to < 12.0:
-            return "仙人指路", "冲高回落留长上影，温和换手疑似主力试盘测试上方抛压"
+            return "仙人指路", "冲高留长上影，温和换手疑似主力试盘"
         else:
-            return "长上影线", "上方抛压较重，冲高受阻回落，短线需突破上影最高价才可转强"
+            return "长上影线", "上方抛压较重，短线需放量突破上影高点"
     if amplitude >= 2.5 and body <= total_len * 0.12:
-        return "变盘十字星", "多空分歧加剧但势均力敌，面临短线方向选择"
+        return "变盘十字星", "多空分歧加剧但势均力敌，面临方向选择"
     if open_p > pre_close * 1.02 and close_p < open_p * 0.97:
-        return "高开低走", "高开后遭遇获利盘集中兑现，日内套牢盘较重，谨防调整"
+        return "高开低走", "高开后遭获利盘集中兑现，谨防短线调整"
     if 1.0 <= chg < 4.0 and close_p > open_p and upper_shadow < body:
         return "稳健推升阳线", "重心温和上移，多头占优且抛压可控"
 
@@ -156,37 +178,74 @@ def evaluate_yesterday_performance(today_price_map):
         pass
     return summary
 
-def generate_ai_market_summary(up_count, down_count, limit_up, top_inflow_stocks):
+def generate_ai_market_summary(up_count, down_count, limit_up, top_inflow_stocks, lhb_count):
     """智能生成每日盘面综述与策略建议"""
     total = up_count + down_count
     temp = int((up_count / total) * 100) if total > 0 else 50
     if temp >= 70:
-        mood = f"情绪高涨（市场温度 {temp}°C），普涨格局明显，赚钱效应极佳"
-        advice = "可积极围绕主线寻找放量突破标的，注意去弱留强。"
+        mood = f"情绪高涨（市场温度 {temp}°C），多头主升格局明显"
+        advice = "可积极围绕主线板块与大单净流入标的顺势做多。"
     elif temp >= 45:
-        mood = f"情绪震荡分化（市场温度 {temp}°C），结构性行情为主"
-        advice = "建议轻指数重个股，聚焦放量且高换手的活跃个股，切忌盲目追高。"
+        mood = f"情绪震荡分化（市场温度 {temp}°C），结构性轮动为主"
+        advice = "建议轻指数重个股，聚焦主力主动净买入且处于筹码支撑位的活跃股。"
     else:
-        mood = f"情绪偏弱降温（市场温度 {temp}°C），亏钱效应有所扩大"
-        advice = "建议控制仓位、防守为主，优先关注底部金针探底或温和蓄势的低位股。"
+        mood = f"情绪降温退潮（市场温度 {temp}°C），防守反击为主"
+        advice = "建议控制仓位，优先关注金针探底或底部温和吸筹的低估值标的。"
 
-    active_names = "、".join([f"{s['name']}({s['change']})" for s in top_inflow_stocks[:4]])
+    active_names = "、".join([f"{s['name']}(净买{s['main_net']})" for s in top_inflow_stocks[:4]])
     return (
-        f"🤖 AI 盘面综述：今日全市场共收录 {total} 只交易A股，其中上涨 {up_count} 家，下跌 {down_count} 家，涨停 {limit_up} 家，{mood}。"
-        f"盘面资金最活跃的核心标的包括 {active_names or '暂无'}。策略上，{advice}"
+        f"🤖 AI 盘面综述：今日全市场共收录 {total} 只A股，上涨 {up_count} 家，下跌 {down_count} 家，涨停 {limit_up} 家，"
+        f"触发龙虎榜异动 {lhb_count} 家，{mood}。今日主力主动扫货最强的标的为：{active_names or '暂无'}。策略建议：{advice}"
     )
 
+def send_notifications(date_str, ai_summary, top_stocks, perf):
+    """多渠道智能推送：支持 PushPlus(微信) / Server酱 / 钉钉 / 飞书"""
+    webhook = os.environ.get("NOTIFY_WEBHOOK", "").strip()
+    pushplus_token = os.environ.get("PUSHPLUS_TOKEN", "").strip()
+    if not webhook and not pushplus_token:
+        return
+
+    lines = [f"- **{s['name']} ({s['code']})**: 现价 {s['price']} ({s['change']}) | 主力净买: {s['main_net']} | {s['tag']} · {s['kline_pattern']}" for s in top_stocks[:8]]
+    md_text = (
+        f"### 🚀 A股量化复盘与潜力股预警 ({date_str})\n\n"
+        f"{ai_summary}\n\n"
+        f"**昨日选股次日战绩**：胜率 `{perf.get('win_rate')}` | 平均溢价 `{perf.get('avg_change')}`\n\n"
+        f"#### 🔥 今日主力抢筹 & 潜力精选 Top 8：\n" + "\n".join(lines) +
+        f"\n\n👉 [点击打开全市场量化复盘终端]({os.environ.get('PAGE_URL', '#')})"
+    )
+
+    try:
+        if pushplus_token:
+            requests.post("http://www.pushplus.plus/send", json={
+                "token": pushplus_token,
+                "title": f"A股潜力股复盘 ({date_str})",
+                "content": md_text,
+                "template": "markdown"
+            }, timeout=10)
+            print("已通过 PushPlus 推送到微信！")
+        if webhook:
+            if "dingtalk" in webhook:
+                payload = {"msgtype": "markdown", "markdown": {"title": "A股量化复盘", "text": md_text}}
+            elif "feishu" in webhook or "lark" in webhook:
+                payload = {"msg_type": "text", "content": {"text": md_text}}
+            else:
+                payload = {"text": md_text, "title": f"A股量化复盘 ({date_str})", "desp": md_text}
+            requests.post(webhook, json=payload, timeout=10)
+            print("已通过 Webhook 推送通知！")
+    except Exception as e:
+        print(f"消息推送跳过: {e}")
+
 def main():
-    print("开始全量抓取 A 股 5000+ 公司数据与K线形态识别...")
+    print("开始全量抓取 A 股 5300+ 公司数据、主力资金、龙虎榜异动与K线形态...")
     symbols = get_all_stock_symbols()
     raw_quotes = fetch_all_quotes_from_tencent(symbols)
     print(f"腾讯接口成功返回 {len(raw_quotes)} 只股票的完整行情！")
 
     indices = get_market_overview()
     stocks = []
-    up_count, down_count, limit_up = 0, 0, 0
+    up_count, down_count, limit_up, lhb_count = 0, 0, 0, 0
     today_price_map = {}
-    board_stats = defaultdict(lambda: {"count": 0, "chg_sum": 0.0, "amount_sum": 0.0})
+    concept_stats = defaultdict(lambda: {"count": 0, "chg_sum": 0.0, "net_sum": 0.0})
 
     for parts in raw_quotes:
         try:
@@ -195,6 +254,8 @@ def main():
             price = float(parts[3]) if parts[3] else 0.0
             pre_close = float(parts[4]) if parts[4] else 0.0
             open_p = float(parts[5]) if parts[5] else price
+            outer_vol = float(parts[7]) if parts[7] else 0.0  # 外盘（主动买盘手数）
+            inner_vol = float(parts[8]) if parts[8] else 0.0  # 内盘（主动卖盘手数）
             high_p = float(parts[33]) if parts[33] else price
             low_p = float(parts[34]) if parts[34] else price
             if price <= 0 or pre_close <= 0:
@@ -203,6 +264,7 @@ def main():
             chg = float(parts[32]) if parts[32] else 0.0
             to = float(parts[38]) if parts[38] else 0.0
             pe = float(parts[39]) if parts[39] else 0.0
+            amplitude = float(parts[43]) if parts[43] else ((high_p - low_p) / pre_close * 100)
             mv = float(parts[45]) if parts[45] else 0.0
             vr = float(parts[49]) if parts[49] else 1.0
             amount_wan = float(parts[37]) if parts[37] else 0.0
@@ -211,6 +273,11 @@ def main():
             continue
 
         today_price_map[code] = chg
+
+        # 计算主力主动净买入额（亿元）：利用内外盘主动成交差额占总成交比例测算
+        total_vol = outer_vol + inner_vol
+        net_ratio = ((outer_vol - inner_vol) / total_vol) if total_vol > 0 else 0.0
+        main_net_yi = amount_yi * net_ratio
 
         if code.startswith("688"):
             sector, symbol = "科创板", f"sh{code}"
@@ -223,6 +290,9 @@ def main():
         else:
             sector, symbol = "北交所", f"bj{code}"
 
+        concepts = infer_concepts(name, sector)
+        primary_concept = concepts[0]
+
         is_limit_up = (chg >= 9.8 and not code.startswith(("30", "68", "8", "4", "92"))) or (chg >= 19.8)
         if chg > 0:
             up_count += 1
@@ -231,40 +301,49 @@ def main():
         elif chg < 0:
             down_count += 1
 
-        board_stats[sector]["count"] += 1
-        board_stats[sector]["chg_sum"] += chg
-        board_stats[sector]["amount_sum"] += amount_yi
+        # 龙虎榜异动判定（涨停、振幅>=15%、换手率>=20%且涨幅>5%）
+        is_lhb = is_limit_up or amplitude >= 15.0 or (to >= 20.0 and abs(chg) >= 6.0)
+        if is_lhb:
+            lhb_count += 1
+
+        for c in concepts:
+            concept_stats[c]["count"] += 1
+            concept_stats[c]["chg_sum"] += chg
+            concept_stats[c]["net_sum"] += main_net_yi
 
         is_st = "ST" in name or "退" in name
-
         kline_pattern, kline_desc = analyze_single_kline(open_p, price, high_p, low_p, pre_close, chg, to)
 
+        # 估算筹码支撑价（日内均价 VWAP 与近期支撑）
+        vwap = (amount_wan * 10000 / (total_vol * 100)) if total_vol > 0 else price
+        chip_status = "筹码获利锁定" if price >= vwap else "短线受制均价线"
+
+        # 策略打标与简评
         tag = "全市场"
         comments = [f"【{kline_pattern}】{kline_desc}"]
         if is_limit_up and not is_st:
             tag = "涨停板"
-            comments.insert(0, f"强势封涨停(换手{to:.1f}%)")
+            comments.insert(0, f"🐉封死涨停(主力净买{main_net_yi:+.2f}亿)")
         elif not is_st and price >= 4.0:
-            if 3.0 <= chg <= 8.8 and 4.0 <= to <= 20.0 and vr >= 1.5:
+            if 3.0 <= chg <= 8.8 and 4.0 <= to <= 22.0 and vr >= 1.5 and main_net_yi > 0.05:
                 tag = "量价突破"
-                comments.insert(0, f"放量上攻(量比{vr:.1f})")
-            elif 1.0 <= chg <= 4.5 and 2.5 <= to <= 10.0 and 1.2 <= vr <= 2.8:
+                comments.insert(0, f"🐋大单抢筹{main_net_yi:+.2f}亿(量比{vr:.1f})")
+            elif 1.0 <= chg <= 4.5 and 2.5 <= to <= 10.0 and 1.2 <= vr <= 2.8 and main_net_yi > 0:
                 tag = "温和蓄势"
-                comments.insert(0, f"温和放量蓄势(量比{vr:.1f})")
-            elif to >= 12.0 and vr >= 1.4 and chg > 0:
-                tag = "高换手博弈"
-                comments.insert(0, f"短线剧烈博弈(换手{to:.1f}%)")
+                comments.insert(0, f"主力温和吸筹{main_net_yi:+.2f}亿")
+            elif is_lhb and chg > 3.0:
+                tag = "龙虎异动"
+                comments.insert(0, f"🐉游资席位高换手异动(振幅{amplitude:.1f}%)")
 
+        comments.append(f"均价成本:{vwap:.2f}元({chip_status})")
         reason = "；".join(comments)
-        mv_str = f"{mv:.1f}亿" if mv > 0 else "--"
-        pe_str = f"{pe:.1f}" if pe > 0 else ("亏损" if pe < 0 else "--")
-        amount_str = f"{amount_yi:.2f}亿"
 
         stocks.append({
             "code": code,
             "symbol": symbol,
             "name": name,
             "sector": sector,
+            "concept": primary_concept,
             "price": f"{price:.2f}",
             "price_num": round(price, 2),
             "change": f"{chg:+.2f}%",
@@ -273,32 +352,39 @@ def main():
             "turnover_num": round(to, 2),
             "volume_ratio": f"{vr:.2f}",
             "volume_ratio_num": round(vr, 2),
-            "market_cap": mv_str,
+            "market_cap": f"{mv:.1f}亿" if mv > 0 else "--",
             "market_cap_num": round(mv, 1),
-            "pe": pe_str,
+            "pe": f"{pe:.1f}" if pe > 0 else ("亏损" if pe < 0 else "--"),
             "pe_num": round(pe, 1),
-            "net_inflow": amount_str,
-            "net_inflow_num": round(amount_yi, 2),
+            "amount": f"{amount_yi:.2f}亿",
+            "amount_num": round(amount_yi, 2),
+            "main_net": f"{main_net_yi:+.2f}亿",
+            "main_net_num": round(main_net_yi, 2),
+            "is_lhb": is_lhb,
+            "vwap": round(vwap, 2),
             "kline_pattern": kline_pattern,
             "tag": tag,
             "reason": reason
         })
 
-    top_sectors = []
-    for sec_name, st in board_stats.items():
+    # 生成题材热力图数据（按平均涨幅排序）
+    heatmap = []
+    for c_name, st in concept_stats.items():
         if st["count"] > 0:
             avg_c = st["chg_sum"] / st["count"]
-            top_sectors.append({
-                "name": sec_name,
+            heatmap.append({
+                "name": c_name,
+                "count": st["count"],
                 "avg_change": round(avg_c, 2),
-                "net_inflow": round(st["amount_sum"], 1)
+                "net_inflow": round(st["net_sum"], 1)
             })
-    top_sectors.sort(key=lambda x: x["avg_change"], reverse=True)
+    heatmap.sort(key=lambda x: x["avg_change"], reverse=True)
+
     stocks.sort(key=lambda x: x["change_num"], reverse=True)
 
     yesterday_perf = evaluate_yesterday_performance(today_price_map)
-    top_active = [s for s in stocks if s["tag"] == "量价突破"][:4]
-    ai_summary = generate_ai_market_summary(up_count, down_count, limit_up, top_active)
+    top_inflow = sorted([s for s in stocks if s["tag"] in ("量价突破", "涨停板")], key=lambda x: x["main_net_num"], reverse=True)
+    ai_summary = generate_ai_market_summary(up_count, down_count, limit_up, top_inflow, lhb_count)
 
     tz_bj = timezone(timedelta(hours=8))
     now = datetime.now(tz_bj)
@@ -311,12 +397,13 @@ def main():
         "total_count": len(stocks),
         "ai_summary": ai_summary,
         "yesterday_performance": yesterday_perf,
-        "top_sectors": top_sectors,
+        "top_sectors": heatmap[:8],
         "market_overview": {
             "indices": indices,
             "up_count": up_count,
             "down_count": down_count,
-            "limit_up": limit_up
+            "limit_up": limit_up,
+            "lhb_count": lhb_count
         },
         "stocks": stocks
     }
@@ -335,7 +422,9 @@ def main():
     with open("history/dates.json", "w", encoding="utf-8") as f:
         json.dump(history_files, f, ensure_ascii=False, indent=2)
 
-    print(f"大功告成！全市场共收录 {len(stocks)} 只A股及K线形态解读！")
+    # 触发自动推送通知
+    send_notifications(date_str, ai_summary, top_inflow, yesterday_perf)
+    print(f"大功告成！全市场共收录 {len(stocks)} 只A股，已包含主力净买、题材热力图、龙虎榜与筹码数据！")
 
 if __name__ == "__main__":
     main()
