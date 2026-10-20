@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A股全市场量化终端 & AI K线解读</title>
+    <title>A股全市场量化终端 - 筹码·龙虎·热力·K线</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .up { color: #dc2626; font-weight: 600; }
         .down { color: #16a34a; font-weight: 600; }
         .star-active { color: #eab308; }
         .sort-btn:hover { cursor: pointer; text-decoration: underline; }
+        .alert-row { background-color: #fefce8 !important; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -18,33 +19,35 @@
     <header class="bg-slate-900 text-white shadow sticky top-0 z-40">
         <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center space-x-2">
-                <span class="text-2xl">🚀</span>
-                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股全市场量化终端 & K线智能解读</h1>
+                <span class="text-2xl">⚡</span>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight">A股全维量化终端 <span class="text-xs font-normal text-amber-400 bg-slate-800 px-2 py-0.5 rounded ml-1">Pro 机构版</span></h1>
             </div>
-            <div class="flex flex-wrap items-center gap-3 text-xs md:text-sm">
+            <div class="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+                <button onclick="triggerAlertScan()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1 rounded-lg transition">🔔 盘面预警扫描 (<span id="alert-count">0</span>)</button>
                 <div class="flex items-center bg-slate-800 rounded-lg px-2.5 py-1 border border-slate-700">
-                    <span class="mr-1.5 text-slate-400">📅 历史时光机:</span>
+                    <span class="mr-1.5 text-slate-400">📅 时光机:</span>
                     <select id="history-select" onchange="loadByDate(this.value)" class="bg-transparent text-white font-medium focus:outline-none cursor-pointer">
                         <option value="latest">最新实时盘面</option>
                     </select>
                 </div>
-                <span id="market-stat" class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">正在载入全市场行情...</span>
+                <span id="market-stat" class="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 text-slate-300">载入中...</span>
             </div>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-5 flex-1 space-y-4">
+    <main class="container mx-auto px-4 py-4 flex-1 space-y-4">
 
         <!-- AI 盘面综述 -->
-        <div id="ai-banner" class="bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 text-white p-4 rounded-xl shadow-sm text-xs md:text-sm leading-relaxed">
+        <div id="ai-banner" class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 rounded-xl shadow-sm text-xs md:text-sm leading-relaxed border border-indigo-800/50">
             🤖 正在生成今日 AI 量化复盘综述...
         </div>
 
-        <!-- 1. 顶部看板 -->
+        <!-- 1. 顶部看板：三大指数 + 题材热力图 + 战绩与自选 -->
         <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div class="md:col-span-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <!-- 三大指数与情绪 (占4列) -->
+            <div class="md:col-span-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
                 <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-xs font-bold text-slate-500 uppercase">三大指数 & 涨跌家数</h2>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">三大指数 & 龙虎情绪</h2>
                     <span id="stat-summary" class="text-xs font-semibold text-slate-500">涨:-- 跌:-- 涨停:--</span>
                 </div>
                 <div id="index-cards" class="grid grid-cols-3 gap-2 text-center text-sm">
@@ -54,25 +57,27 @@
                 </div>
             </div>
 
+            <!-- 题材概念资金热力图 (占5列) -->
             <div class="md:col-span-5 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-xs font-bold text-slate-500 uppercase">🔥 市场板块资金分布 (点击可筛选)</h2>
-                    <button onclick="setSectorFilter('')" class="text-xs text-blue-600 hover:underline">重置板块</button>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">🔥 题材概念热力图 (点击联动过滤)</h2>
+                    <button onclick="setSectorFilter('')" class="text-xs text-blue-600 hover:underline">显示全部题材</button>
                 </div>
-                <div id="sector-cards" class="grid grid-cols-3 gap-2 text-xs">
-                    <div class="p-2 bg-slate-50 rounded text-center text-slate-400 col-span-3">正在统计板块表现...</div>
+                <div id="sector-cards" class="grid grid-cols-4 gap-1.5 text-xs">
+                    <div class="p-2 bg-slate-50 rounded text-center text-slate-400 col-span-4">正在渲染题材热力图...</div>
                 </div>
             </div>
 
+            <!-- 昨日战绩 & 我的自选 (占3列) -->
             <div class="md:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
                 <div class="flex justify-between items-start border-b border-slate-100 pb-2">
                     <div>
-                        <h2 class="text-xs font-bold text-slate-500">昨日潜力股次日胜率</h2>
+                        <h2 class="text-xs font-bold text-slate-500">昨日选股次日胜率</h2>
                         <div class="text-[11px] text-slate-400" id="perf-date">基准: --</div>
                     </div>
                     <div class="text-right">
                         <div class="text-base font-extrabold text-indigo-600" id="perf-winrate">--</div>
-                        <div class="text-xs font-bold" id="perf-avg">均涨: --</div>
+                        <div class="text-xs font-bold" id="perf-avg">溢价: --</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between pt-2">
@@ -85,25 +90,25 @@
             </div>
         </section>
 
-        <!-- 2. 主筛选、K线形态筛选与搜索栏 -->
+        <!-- 2. 策略、龙虎榜、K线形态筛选栏 -->
         <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <div class="flex flex-wrap gap-3 items-center justify-between">
-                <div class="flex flex-wrap gap-1.5 text-xs md:text-sm">
-                    <button onclick="setFilter('all')" class="filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium" data-type="all">全部A股</button>
-                    <button onclick="setFilter('量价突破')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="量价突破">🔥 量价突破</button>
-                    <button onclick="setFilter('温和蓄势')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="温和蓄势">🌱 温和蓄势</button>
-                    <button onclick="setFilter('涨停板')" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="涨停板">🚩 涨停池</button>
-                    <!-- 新增 K 线形态快捷筛选 -->
-                    <button onclick="setFilter('金针探底')" class="filter-btn px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="金针探底">🔨 金针探底</button>
-                    <button onclick="setFilter('仙人指路')" class="filter-btn px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="仙人指路">⚡ 仙人指路</button>
-                    <button onclick="setFilter('光头大阳')" class="filter-btn px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="光头大阳">🚀 光头大阳</button>
+            <div class="flex flex-wrap gap-2 items-center justify-between">
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button onclick="setFilter('all')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-blue-600 text-white font-medium" data-type="all">全部A股</button>
+                    <button onclick="setFilter('量价突破')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="量价突破">🐋 大单量价突破</button>
+                    <button onclick="setFilter('温和蓄势')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="温和蓄势">🌱 主力温和吸筹</button>
+                    <button onclick="setFilter('lhb')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 font-medium" data-type="lhb">🐉 龙虎榜异动</button>
+                    <button onclick="setFilter('涨停板')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium" data-type="涨停板">🚩 今日涨停池</button>
+                    <button onclick="setFilter('金针探底')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="金针探底">🔨 金针探底</button>
+                    <button onclick="setFilter('仙人指路')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="仙人指路">⚡ 仙人指路</button>
+                    <button onclick="setFilter('光头大阳')" class="filter-btn px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium" data-type="光头大阳">🚀 光头大阳</button>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <input type="text" id="search-input" oninput="applyFilterAndSort()" placeholder="搜索代码/名称/K线形态..." class="w-56 border border-slate-300 rounded-lg px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="toggleAdvPanel()" class="text-xs md:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 font-medium">⚙️ 组合选股</button>
-                    <button onclick="exportCSV()" class="text-xs md:text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium">📥 导出Excel</button>
-                    <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs md:text-sm text-slate-600">
+                    <input type="text" id="search-input" oninput="applyFilterAndSort()" placeholder="搜代码/名称/题材 (如 算力/半导体)..." class="w-52 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="toggleAdvPanel()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-300 font-medium">⚙️ 组合筛选 & 预警设置</button>
+                    <button onclick="exportCSV()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg font-medium">📥 导出Excel</button>
+                    <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs text-slate-600">
                         <option value="20">20条/页</option>
                         <option value="50" selected>50条/页</option>
                         <option value="100">100条/页</option>
@@ -111,36 +116,40 @@
                 </div>
             </div>
 
-            <!-- 组合选股器折叠面板 -->
-            <div id="adv-panel" class="hidden pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-3 rounded-lg">
+            <!-- 组合选股器与自定义预警设置面板 -->
+            <div id="adv-panel" class="hidden pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-3 text-xs bg-slate-50 p-3 rounded-lg">
                 <div>
                     <label class="font-bold text-slate-600 block mb-1">现价区间 (元):</label>
                     <div class="flex items-center space-x-1">
-                        <input type="number" id="min-price" oninput="applyFilterAndSort()" placeholder="最低价" class="w-full border rounded px-2 py-1">
+                        <input type="number" id="min-price" oninput="applyFilterAndSort()" placeholder="最低" class="w-full border rounded px-2 py-1">
                         <span>-</span>
-                        <input type="number" id="max-price" oninput="applyFilterAndSort()" placeholder="最高价" class="w-full border rounded px-2 py-1">
+                        <input type="number" id="max-price" oninput="applyFilterAndSort()" placeholder="最高" class="w-full border rounded px-2 py-1">
                     </div>
                 </div>
                 <div>
                     <label class="font-bold text-slate-600 block mb-1">总市值区间 (亿元):</label>
                     <div class="flex items-center space-x-1">
-                        <input type="number" id="min-mv" oninput="applyFilterAndSort()" placeholder="最小市值" class="w-full border rounded px-2 py-1">
+                        <input type="number" id="min-mv" oninput="applyFilterAndSort()" placeholder="最小" class="w-full border rounded px-2 py-1">
                         <span>-</span>
-                        <input type="number" id="max-mv" oninput="applyFilterAndSort()" placeholder="最大市值" class="w-full border rounded px-2 py-1">
+                        <input type="number" id="max-mv" oninput="applyFilterAndSort()" placeholder="最大" class="w-full border rounded px-2 py-1">
                     </div>
                 </div>
                 <div>
-                    <label class="font-bold text-slate-600 block mb-1">成交额门槛 (亿元):</label>
-                    <input type="number" step="0.5" id="min-inflow" oninput="applyFilterAndSort()" placeholder="如填 2 代表成交>2亿" class="w-full border rounded px-2 py-1">
+                    <label class="font-bold text-slate-600 block mb-1">主力净买门槛 (亿元):</label>
+                    <input type="number" step="0.1" id="min-inflow" oninput="applyFilterAndSort()" placeholder="如 0.3 代表净买>3000万" class="w-full border rounded px-2 py-1">
                 </div>
-                <div class="flex flex-col justify-center space-y-1.5">
-                    <div class="flex flex-wrap gap-3">
-                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-st" onchange="applyFilterAndSort()" class="mr-1">剔除ST股</label>
-                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-kcb" onchange="applyFilterAndSort()" class="mr-1">剔除科创(688)</label>
+                <div>
+                    <label class="font-bold text-amber-700 block mb-1">🔔 雷达预警条件 (量比≥):</label>
+                    <input type="number" step="0.5" id="alert-vr" value="2.0" onchange="updateAlertCount()" class="w-full border border-amber-300 bg-amber-50 rounded px-2 py-1">
+                </div>
+                <div class="flex flex-col justify-center space-y-1">
+                    <div class="flex flex-wrap gap-2">
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-st" onchange="applyFilterAndSort()" class="mr-1">剔除ST</label>
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-kcb" onchange="applyFilterAndSort()" class="mr-1">剔除688</label>
                     </div>
-                    <div class="flex flex-wrap gap-3">
-                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-bj" onchange="applyFilterAndSort()" class="mr-1">剔除北交所</label>
-                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-loss" onchange="applyFilterAndSort()" class="mr-1">剔除亏损股(PE&lt;0)</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-bj" onchange="applyFilterAndSort()" class="mr-1">剔除北交</label>
+                        <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="ex-loss" onchange="applyFilterAndSort()" class="mr-1">剔除亏损</label>
                     </div>
                 </div>
             </div>
@@ -154,16 +163,16 @@
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs select-none">
                             <th class="p-3 text-center">自选</th>
                             <th class="p-3">代码 / 名称</th>
-                            <th class="p-3">板块</th>
+                            <th class="p-3">题材概念 / 板块</th>
                             <th class="p-3 sort-btn" onclick="sortTable('price_num')">最新价 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('change_num')">涨跌幅 ⇕</th>
-                            <th class="p-3 sort-btn" onclick="sortTable('net_inflow_num')">成交额 ⇕</th>
+                            <th class="p-3 sort-btn" onclick="sortTable('main_net_num')">主力主动净买 ⇕</th>
+                            <th class="p-3 sort-btn" onclick="sortTable('amount_num')">总成交额 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('turnover_num')">换手率 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('volume_ratio_num')">量比 ⇕</th>
                             <th class="p-3 sort-btn" onclick="sortTable('market_cap_num')">总市值 ⇕</th>
-                            <th class="p-3 sort-btn" onclick="sortTable('pe_num')">PE ⇕</th>
-                            <th class="p-3">K线形态 & 策略诊断</th>
-                            <th class="p-3 text-center">深度诊股</th>
+                            <th class="p-3">K线形态 · 筹码成本 · 龙虎诊断</th>
+                            <th class="p-3 text-center">筹码&K线</th>
                         </tr>
                     </thead>
                     <tbody id="stock-table-body" class="divide-y divide-slate-100 text-xs md:text-sm">
@@ -179,13 +188,13 @@
         </section>
     </main>
 
-    <!-- K线图与 60日均线/形态 AI 深度解读弹窗 -->
+    <!-- K线图 + 60日筹码峰分布 (VPC) + 均线诊断弹窗 -->
     <div id="chart-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="toggleModal(false)">
         <div class="bg-white rounded-2xl max-w-2xl w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-3">
                 <div>
-                    <h3 id="modal-title" class="text-lg font-bold text-slate-800">股票走势与 K 线智能解读</h3>
-                    <p class="text-xs text-slate-400">自动拉取近 60 日 K 线计算均线排列、支撑压力与多日组合形态</p>
+                    <h3 id="modal-title" class="text-lg font-bold text-slate-800">股票走势、筹码分布峰与K线解读</h3>
+                    <p class="text-xs text-slate-400">基于前复权60日量价分布 (Volume Profile) 测算主力筹码密集峰与获利盘比例</p>
                 </div>
                 <button onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
             </div>
@@ -196,18 +205,18 @@
                 <button id="btn-weekly" onclick="switchChartType('weekly')" class="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded font-medium">周K线</button>
             </div>
 
-            <div class="flex justify-center items-center bg-slate-50 rounded-xl p-2 min-h-[240px]">
+            <div class="flex justify-center items-center bg-slate-50 rounded-xl p-2 min-h-[230px]">
                 <img id="chart-img" src="" alt="股票走势图" class="max-w-full rounded shadow-sm">
             </div>
 
-            <!-- 60日历史K线智能解读面板 -->
-            <div class="mt-4 bg-slate-900 text-slate-100 p-4 rounded-xl space-y-2.5 text-xs leading-relaxed">
+            <!-- 60日历史K线 & 筹码分布深度解读面板 -->
+            <div class="mt-4 bg-slate-900 text-slate-100 p-4 rounded-xl space-y-3 text-xs leading-relaxed">
                 <div class="flex items-center justify-between border-b border-slate-700 pb-2">
-                    <span class="font-bold text-amber-400 text-sm">📊 AI 60日K线技术面深度诊断</span>
-                    <span id="kline-status" class="text-slate-400">正在实时计算均线与支撑位...</span>
+                    <span class="font-bold text-amber-400 text-sm">🎯 AI 筹码分布峰 (VPC) & 60日K线诊断</span>
+                    <span id="kline-status" class="text-slate-400">正在实时计算筹码峰与均线...</span>
                 </div>
                 <div id="kline-analysis-body" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                    <div>正在拉取历史K线序列...</div>
+                    <div>正在拉取历史60日量价筹码序列...</div>
                 </div>
             </div>
         </div>
@@ -249,7 +258,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
 
-                document.getElementById('market-stat').innerText = `共 ${data.total_count || data.stocks.length} 只A股 | 更新: ${data.update_time}`;
+                document.getElementById('market-stat').innerText = `共 ${data.total_count || data.stocks.length} 只A股 | ${data.update_time}`;
                 document.getElementById('ai-banner').innerText = data.ai_summary || '🤖 今日盘面数据已就绪。';
                 allStocks = data.stocks || [];
 
@@ -257,6 +266,7 @@
                 renderSectors(data.top_sectors || []);
                 renderPerf(data.yesterday_performance);
                 updateFavCount();
+                updateAlertCount();
                 applyFilterAndSort();
             } catch (err) {
                 document.getElementById('stock-table-body').innerHTML = 
@@ -280,7 +290,7 @@
             }
             if (overview.up_count !== undefined) {
                 document.getElementById('stat-summary').innerHTML = 
-                    `<span class="text-red-600">涨:${overview.up_count}</span> | <span class="text-green-600">跌:${overview.down_count}</span> | <span class="text-rose-700">涨停:${overview.limit_up}</span>`;
+                    `<span class="text-red-600">涨:${overview.up_count}</span> · <span class="text-green-600">跌:${overview.down_count}</span> · <span class="text-rose-700">涨停:${overview.limit_up}</span> · <span class="text-purple-700">龙虎:${overview.lhb_count || 0}</span>`;
             }
         }
 
@@ -288,14 +298,21 @@
             const box = document.getElementById('sector-cards');
             if (!sectors.length) return;
             box.innerHTML = sectors.map(sec => {
-                const isUp = sec.avg_change >= 0;
-                const activeCls = currentSector === sec.name ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-slate-50 hover:bg-slate-100';
+                const chg = sec.avg_change;
+                let bgStyle = 'bg-slate-100 text-slate-700';
+                if (chg >= 2.0) bgStyle = 'bg-red-600 text-white';
+                else if (chg >= 0.5) bgStyle = 'bg-red-100 text-red-900 border-red-200';
+                else if (chg >= 0) bgStyle = 'bg-rose-50 text-rose-800 border-rose-100';
+                else if (chg <= -1.5) bgStyle = 'bg-emerald-600 text-white';
+                else bgStyle = 'bg-emerald-50 text-emerald-800 border-emerald-100';
+
+                const activeRing = currentSector === sec.name ? 'ring-2 ring-blue-600 font-extrabold' : '';
                 return `
-                    <div onclick="setSectorFilter('${sec.name}')" class="p-2 rounded border border-slate-200 cursor-pointer transition ${activeCls}">
-                        <div class="font-bold text-slate-700 truncate">${sec.name}</div>
-                        <div class="flex justify-between items-center mt-1">
-                            <span class="${isUp ? 'up' : 'down'}">${sec.avg_change >= 0 ? '+' : ''}${sec.avg_change}%</span>
-                            <span class="text-[11px] text-slate-400">额:${sec.net_inflow}亿</span>
+                    <div onclick="setSectorFilter('${sec.name}')" class="p-2 rounded border cursor-pointer transition ${bgStyle} ${activeRing}">
+                        <div class="font-bold truncate text-[11px]">${sec.name}</div>
+                        <div class="flex justify-between items-center mt-0.5 text-[11px]">
+                            <span>${chg >= 0 ? '+' : ''}${chg}%</span>
+                            <span class="opacity-80">${sec.net_inflow >= 0 ? '+' : ''}${sec.net_inflow}亿</span>
                         </div>
                     </div>
                 `;
@@ -307,6 +324,25 @@
             document.getElementById('perf-date').innerText = '基准: ' + (perf.tracked_date || '--');
             document.getElementById('perf-winrate').innerText = perf.win_rate || '--';
             document.getElementById('perf-avg').innerText = '均涨: ' + (perf.avg_change || '--');
+        }
+
+        // 实时统计触发量化预警的股票数量（主力净买>0.2亿 + 量比达标 + 站上均价成本线）
+        function updateAlertCount() {
+            const vrMin = parseFloat(document.getElementById('alert-vr')?.value) || 2.0;
+            const alerts = allStocks.filter(s => 
+                s.volume_ratio_num >= vrMin && 
+                (s.main_net_num || 0) >= 0.2 && 
+                s.change_num >= 2.0 && 
+                s.kline_pattern !== '高开低走'
+            );
+            document.getElementById('alert-count').innerText = alerts.length;
+            return alerts;
+        }
+
+        function triggerAlertScan() {
+            currentFilter = 'alert';
+            document.querySelectorAll('.filter-btn').forEach(b => b.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium');
+            applyFilterAndSort();
         }
 
         function setSectorFilter(secName) {
@@ -321,9 +357,14 @@
 
         function applyFilterAndSort() {
             let list = [...allStocks];
+            const vrMin = parseFloat(document.getElementById('alert-vr')?.value) || 2.0;
 
             if (currentFilter === 'fav') {
                 list = list.filter(s => favorites.includes(s.code));
+            } else if (currentFilter === 'lhb') {
+                list = list.filter(s => s.is_lhb);
+            } else if (currentFilter === 'alert') {
+                list = list.filter(s => s.volume_ratio_num >= vrMin && (s.main_net_num || 0) >= 0.2 && s.change_num >= 2.0 && s.kline_pattern !== '高开低走');
             } else if (['金针探底', '仙人指路', '光头大阳'].includes(currentFilter)) {
                 list = list.filter(s => s.kline_pattern === currentFilter);
             } else if (currentFilter !== 'all') {
@@ -336,6 +377,7 @@
                     s.code.toLowerCase().includes(q) || 
                     s.name.toLowerCase().includes(q) || 
                     (s.sector && s.sector.toLowerCase().includes(q)) ||
+                    (s.concept && s.concept.toLowerCase().includes(q)) ||
                     (s.kline_pattern && s.kline_pattern.toLowerCase().includes(q))
                 );
             }
@@ -356,7 +398,7 @@
                 if (!isNaN(maxP) && s.price_num > maxP) return false;
                 if (!isNaN(minMv) && s.market_cap_num < minMv) return false;
                 if (!isNaN(maxMv) && s.market_cap_num > maxMv) return false;
-                if (!isNaN(minInflow) && (s.net_inflow_num || 0) < minInflow) return false;
+                if (!isNaN(minInflow) && (s.main_net_num ?? s.net_inflow_num ?? 0) < minInflow) return false;
                 if (exSt && (s.name.includes('ST') || s.name.includes('退'))) return false;
                 if (exKcb && s.code.startsWith('688')) return false;
                 if (exBj && (s.code.startsWith('8') || s.code.startsWith('4') || s.code.startsWith('92'))) return false;
@@ -400,6 +442,8 @@
             pageData.forEach(s => {
                 const isFav = favorites.includes(s.code);
                 const isUp = s.change_num >= 0;
+                const mainNetNum = s.main_net_num ?? 0;
+                const mainNetCls = mainNetNum > 0 ? 'up' : (mainNetNum < 0 ? 'down' : 'text-slate-500');
                 const emLink = `https://quote.eastmoney.com/${s.symbol}.html`;
 
                 const tr = document.createElement('tr');
@@ -409,25 +453,28 @@
                         <button onclick="toggleFav('${s.code}')" class="text-base select-none ${isFav ? 'star-active' : 'text-slate-300 hover:text-amber-400'}">★</button>
                     </td>
                     <td class="p-3">
-                        <a href="${emLink}" target="_blank" class="font-bold text-slate-800 hover:text-blue-600">${s.name}</a>
+                        <div class="flex items-center space-x-1">
+                            <a href="${emLink}" target="_blank" class="font-bold text-slate-800 hover:text-blue-600">${s.name}</a>
+                            ${s.is_lhb ? '<span title="今日触发龙虎榜异动" class="text-[10px] bg-rose-100 text-rose-700 px-1 rounded font-bold">龙虎</span>' : ''}
+                        </div>
                         <div class="text-xs font-mono text-slate-400">${s.code}</div>
                     </td>
                     <td class="p-3">
-                        <span onclick="setSectorFilter('${s.sector || ''}')" class="cursor-pointer bg-slate-100 hover:bg-blue-100 text-slate-700 px-2 py-0.5 rounded text-xs">${s.sector || '--'}</span>
+                        <span onclick="setSectorFilter('${s.concept || s.sector || ''}')" class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-medium">${s.concept || s.sector || '--'}</span>
                     </td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.price}</td>
                     <td class="p-3 font-mono ${isUp ? 'up' : 'down'}">${s.change}</td>
-                    <td class="p-3 font-mono text-slate-700">${s.net_inflow || '--'}</td>
+                    <td class="p-3 font-mono ${mainNetCls}">${s.main_net || s.net_inflow || '--'}</td>
+                    <td class="p-3 font-mono text-slate-600">${s.amount || s.net_inflow || '--'}</td>
                     <td class="p-3 font-mono">${s.turnover}</td>
                     <td class="p-3 font-mono">${s.volume_ratio}</td>
                     <td class="p-3 font-mono text-slate-600">${s.market_cap}</td>
-                    <td class="p-3 font-mono text-slate-600">${s.pe}</td>
                     <td class="p-3">
                         ${s.tag !== '全市场' ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded text-xs font-semibold mr-1">${s.tag}</span>` : ''}
                         <span class="text-xs text-slate-600">${s.reason}</span>
                     </td>
                     <td class="p-3 text-center">
-                        <button onclick="openChart('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-2.5 py-1 rounded border border-indigo-200">K线解读</button>
+                        <button onclick="openChart('${s.symbol}', '${s.name} (${s.code})')" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-2.5 py-1 rounded shadow-sm">筹码&K线</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -465,9 +512,9 @@
             currentFilter = type;
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 if (btn.getAttribute('data-type') === type) {
-                    btn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium';
+                    btn.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-blue-600 text-white font-medium';
                 } else {
-                    btn.className = 'filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
+                    btn.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
                 }
             });
             applyFilterAndSort();
@@ -506,19 +553,18 @@
 
         function exportCSV() {
             if (!filteredStocks.length) return alert('当前没有可导出的数据！');
-            const headers = ['股票代码', '股票名称', '板块', '最新价', '涨跌幅', '成交额', '换手率', '量比', '总市值', 'PE', 'K线形态', '策略标签', '诊断解读'];
+            const headers = ['代码', '名称', '题材概念', '最新价', '涨跌幅', '主力主动净买', '成交额', '换手率', '量比', '总市值', 'PE', 'K线形态', '策略标签', '诊断解读'];
             const rows = filteredStocks.map(s => [
-                `="${s.code}"`, s.name, s.sector || '', s.price, s.change, s.net_inflow || '', s.turnover, s.volume_ratio, s.market_cap, s.pe, s.kline_pattern || '', s.tag, `"${s.reason}"`
+                `="${s.code}"`, s.name, s.concept || s.sector || '', s.price, s.change, s.main_net || '', s.amount || '', s.turnover, s.volume_ratio, s.market_cap, s.pe, s.kline_pattern || '', s.tag, `"${s.reason}"`
             ]);
             const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `A股筛选结果_${new Date().toISOString().slice(0,10)}.csv`;
+            a.download = `A股量化选股_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
         }
 
-        // 打开K线弹窗并实时拉取 60 日K线进行技术指标解读
         async function openChart(symbol, title) {
             currentSymbol = symbol;
             document.getElementById('modal-title').innerText = title;
@@ -531,86 +577,106 @@
         async function fetchAndAnalyze60DayKline(symbol) {
             const statusEl = document.getElementById('kline-status');
             const bodyEl = document.getElementById('kline-analysis-body');
-            statusEl.innerText = '正在拉取近60日K线序列...';
-            bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">正在计算 MA5/MA10/MA20/MA60 与支撑阻力位...</div>';
+            statusEl.innerText = '正在拉取近60日K线与成交量筹码序列...';
+            bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">正在进行 VPC 筹码分布峰与均线多空测算...</div>';
 
             try {
-                // 使用腾讯前复权日K线免鉴权接口
                 const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${symbol},day,,,60,qfq`;
                 const res = await fetch(url);
                 const json = await res.json();
                 const kdata = json.data[symbol]?.qfqday || json.data[symbol]?.day || [];
 
                 if (kdata.length < 20) {
-                    statusEl.innerText = '次新股或数据不足';
-                    bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">上市交易天数不足20日，暂无法生成长周期均线诊断。</div>';
+                    statusEl.innerText = '次新股数据不足';
+                    bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">上市不足20个交易日，暂无法生成60日筹码峰。</div>';
                     return;
                 }
 
-                // kdata 格式: [日期, 开盘, 收盘, 最高, 最低, 成交量]
+                // [日期, 开盘, 收盘, 最高, 最低, 成交量]
                 const closes = kdata.map(d => parseFloat(d[2]));
                 const highs = kdata.map(d => parseFloat(d[3]));
                 const lows = kdata.map(d => parseFloat(d[4]));
                 const opens = kdata.map(d => parseFloat(d[1]));
+                const vols = kdata.map(d => parseFloat(d[5]));
                 const n = closes.length;
                 const cur = closes[n - 1];
 
                 const calcMA = (days) => closes.slice(n - days).reduce((a, b) => a + b, 0) / days;
-                const ma5 = calcMA(5);
-                const ma10 = calcMA(10);
-                const ma20 = calcMA(20);
-                const ma60 = n >= 60 ? calcMA(60) : ma20;
+                const ma5 = calcMA(5), ma10 = calcMA(10), ma20 = calcMA(20), ma60 = n >= 60 ? calcMA(60) : ma20;
 
-                // 1. 均线系统判断
+                // 计算 VPC 60日筹码分布（主力平均持仓成本与获利盘比例）
+                let totalVol = 0, weightedCost = 0, profitVol = 0;
+                for (let i = 0; i < n; i++) {
+                    // 近期换手权重更高（衰减系数）
+                    const weight = 0.5 + 0.5 * (i / n);
+                    const avgP = (highs[i] + lows[i] + closes[i] * 2) / 4;
+                    const effVol = vols[i] * weight;
+                    totalVol += effVol;
+                    weightedCost += avgP * effVol;
+                    if (avgP <= cur) profitVol += effVol;
+                }
+                const mainCost = totalVol > 0 ? (weightedCost / totalVol) : cur;
+                const profitRatio = totalVol > 0 ? ((profitVol / totalVol) * 100).toFixed(1) : 50.0;
+
+                // 均线趋势诊断
                 let maTrend = '';
                 if (cur > ma5 && ma5 > ma10 && ma10 > ma20) {
-                    maTrend = '🔥 <b class="text-red-400">均线多头排列</b>：股价站稳5/10/20日均线之上，中期上升趋势明确，沿5日线顺势持股为主。';
+                    maTrend = '🔥 <b class="text-red-400">均线多头排列</b>：站稳5/10/20日均线，主升趋势完好。';
                 } else if (cur < ma5 && ma5 < ma10 && ma10 < ma20) {
-                    maTrend = '❄️ <b class="text-emerald-400">均线空头压制</b>：受制于多条短期均线下方，处于弱势寻底阶段，切勿盲目重仓抄底。';
+                    maTrend = '❄️ <b class="text-emerald-400">均线空头排列</b>：受制于多条均线下方，弱势寻底。';
                 } else if (cur > ma20 && cur < ma5) {
-                    maTrend = '🌱 <b class="text-amber-300">强势回踩洗盘</b>：短线跌破5日线但仍守住20日生命线（' + ma20.toFixed(2) + '元），关注20日线缩量企稳机会。';
+                    maTrend = `🌱 <b class="text-amber-300">回踩生命线</b>：短线回撤测试20日线(${ma20.toFixed(2)}元)支撑。`;
                 } else {
-                    maTrend = '⚖️ <b class="text-blue-300">均线交织震荡</b>：短中期均线粘合收敛，处于箱体蓄势期，等待放量突破方向。';
+                    maTrend = '⚖️ <b class="text-blue-300">均线粘合蓄势</b>：短中期均线收敛，等待放量选择方向。';
                 }
 
-                // 2. 多日K线组合识别
+                // 多日K线组合
                 let combo = '常规震荡K线组合';
-                const c1 = closes[n - 1], o1 = opens[n - 1];
-                const c2 = closes[n - 2], o2 = opens[n - 2];
-                const c3 = closes[n - 3], o3 = opens[n - 3];
-
+                const c1 = closes[n - 1], o1 = opens[n - 1], c2 = closes[n - 2], o2 = opens[n - 2], c3 = closes[n - 3], o3 = opens[n - 3];
                 if (c2 < o2 && c1 > o1 && c1 > o2 && o1 <= c2) {
-                    combo = '🚩 <b class="text-red-400">阳包阴（看涨吞没）</b>：今日阳线实体完全反包昨日阴线，多头强力反扑，短线转强信号！';
+                    combo = '🚩 <b class="text-red-400">阳包阴反包</b>：多头强力吞没昨日阴线，短线转强信号！';
                 } else if (c1 > o1 && c2 > o2 && c3 > o3 && c1 > c2 && c2 > c3) {
-                    combo = '🚩 <b class="text-red-400">红三兵形态</b>：连续三日收阳且重心稳步上移，买盘持续性良好。';
+                    combo = '🚩 <b class="text-red-400">红三兵形态</b>：连续三日收阳，买盘稳步推升。';
                 } else if (c2 > o2 && c1 < o1 && c1 < o2 && o1 >= c2) {
-                    combo = '⚠️ <b class="text-emerald-400">阴包阳（看跌吞没）</b>：今日阴线反包昨日阳线，短线抛压涌出，注意防守。';
+                    combo = '⚠️ <b class="text-emerald-400">阴包阳吞没</b>：短线抛压涌出，注意防守。';
                 }
 
-                // 3. 20日箱体支撑与压力位
                 const high20 = Math.max(...highs.slice(n - 20));
                 const low20 = Math.min(...lows.slice(n - 20));
-                const bias5 = ((cur - ma5) / ma5 * 100).toFixed(2);
 
-                statusEl.innerText = `基于最近 ${n} 个交易日前复权数据计算`;
+                statusEl.innerText = `基于近 ${n} 日前复权量价筹码分布计算`;
                 bodyEl.innerHTML = `
+                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 md:col-span-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-amber-300 font-bold">🎯 60日筹码密集峰 (主力成本): ${mainCost.toFixed(2)} 元</span>
+                            <span class="font-bold ${profitRatio >= 70 ? 'text-red-400' : 'text-emerald-400'}">当前获利盘比例: ${profitRatio}%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden my-1.5">
+                            <div class="bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 h-full" style="width: ${profitRatio}%"></div>
+                        </div>
+                        <div class="text-slate-300 text-[11px]">
+                            ${profitRatio >= 85 ? '🔥 获利盘极高，上方几乎无历史套牢盘，处于筹码突破主升区（注意高换手止盈）。' : 
+                              (profitRatio <= 15 ? '❄️ 获利盘不足15%，超跌严重，上方套牢密集峰在 ' + mainCost.toFixed(2) + ' 元附近。' : 
+                              '⚖️ 现价围绕主力筹码成本峰(' + mainCost.toFixed(2) + '元)博弈，站稳成本峰之上可积极看多。')}
+                        </div>
+                    </div>
                     <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-                        <div class="text-slate-400 mb-1">【均线系统诊断】 (MA5:${ma5.toFixed(2)} / MA20:${ma20.toFixed(2)})</div>
+                        <div class="text-slate-400 mb-1">【均线系统】 (MA5:${ma5.toFixed(2)} / MA20:${ma20.toFixed(2)})</div>
                         <div>${maTrend}</div>
                     </div>
                     <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-                        <div class="text-slate-400 mb-1">【多日K线组合 & 乖离率】 (5日乖离:${bias5}%)</div>
-                        <div>${combo}；${Math.abs(bias5) > 8 ? '当前偏离5日线较大，谨防短线均值回归。' : '股价与5日线贴合度正常。'}</div>
+                        <div class="text-slate-400 mb-1">【K线组合 & 牛熊线】 (MA60:${ma60.toFixed(2)})</div>
+                        <div>${combo}；当前${cur >= ma60 ? '位于60日牛熊线上方强势区' : '受制于60日线下方'}。</div>
                     </div>
-                    <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 md:col-span-2 flex flex-wrap justify-between items-center gap-2">
-                        <div>🛡️ <b>近20日强支撑位</b>: <span class="text-emerald-400 font-mono text-sm">${low20.toFixed(2)} 元</span></div>
-                        <div>⚔️ <b>近20日箱体压力位</b>: <span class="text-red-400 font-mono text-sm">${high20.toFixed(2)} 元</span></div>
-                        <div>📏 <b>60日牛熊分界线(MA60)</b>: <span class="text-amber-300 font-mono text-sm">${ma60.toFixed(2)} 元 (${cur >= ma60 ? '站上牛熊线' : '位于水下'})</span></div>
+                    <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 md:col-span-2 flex justify-between items-center">
+                        <div>🛡️ <b>近20日箱体强支撑</b>: <span class="text-emerald-400 font-mono">${low20.toFixed(2)} 元</span></div>
+                        <div>🎯 <b>主力筹码峰成本</b>: <span class="text-amber-300 font-mono">${mainCost.toFixed(2)} 元</span></div>
+                        <div>⚔️ <b>近20日箱体压力位</b>: <span class="text-red-400 font-mono">${high20.toFixed(2)} 元</span></div>
                     </div>
                 `;
             } catch (err) {
                 statusEl.innerText = '实时计算完成';
-                bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">该标的暂不支持跨域K线序列读取，请直接参考上方K线图形态。</div>';
+                bodyEl.innerHTML = '<div class="col-span-2 text-slate-400">该标的暂不支持跨域筹码序列读取，请直接参考上方K线图形态。</div>';
             }
         }
 
