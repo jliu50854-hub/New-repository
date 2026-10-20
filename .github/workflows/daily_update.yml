@@ -25,10 +25,11 @@ jobs:
         run: |
           pip install requests
 
-      - name: 4. 运行选股与回测脚本
+      - - name: 4. 运行选股与回测脚本
         env:
-          # 如需开启手机消息推送，可在仓库 Settings -> Secrets 中设置 NOTIFY_WEBHOOK
+          # 如需开启手机消息推送，可在仓库 Settings -> Secrets 中设置 NOTIFY_WEBHOOK 或 PUSHPLUS_TOKEN
           NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           PAGE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           python fetch_stocks.py
